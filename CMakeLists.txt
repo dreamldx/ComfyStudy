@@ -34,3 +34,7 @@ target_link_libraries(comfystudy PRIVATE comfystudy_core)
 
 # Targets that exist on one system only (defined by the platform file, now that the program exists).
 comfystudy_platform_targets()
+
+# Tests: one program per tests/test_*.cpp, run with CTest.
+enable_testing()
+add_subdirectory(tests)

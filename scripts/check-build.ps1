@@ -43,8 +43,8 @@ if ($r.Code -ne 0) { Fail ("cmake --preset windows-debug failed (exit {0}): {1}"
 $r = Build 'windows-debug' @('--verbose')
 if ($r.Code -ne 0) { Fail ("debug build failed (exit {0}): {1}" -f $r.Code, ($r.Lines -join ' | ')) }
 $compile = Compile-Lines $r.Lines
-if ($compile.Count -ne 2) { Fail ("expected exactly 2 compile commands, found {0}" -f $compile.Count) }
-foreach ($name in 'main.cpp', 'greeting.cpp') {
+if ($compile.Count -ne 3) { Fail ("expected exactly 3 compile commands (main, greeting, test_greeting), found {0}" -f $compile.Count) }
+foreach ($name in 'main.cpp', 'greeting.cpp', 'test_greeting.cpp') {
   $line = @($compile | Where-Object { $_.Contains('\' + $name) })
   if ($line.Count -ne 1) { Fail "expected one compile command for $name" }
   foreach ($flag in '/Fo', '-std:c++20') {
@@ -52,14 +52,20 @@ foreach ($name in 'main.cpp', 'greeting.cpp') {
   }
 }
 $link = @($r.Lines | Where-Object { $_ -match 'link\.exe' })
-if ($link.Count -ne 1) { Fail ("expected exactly 1 link command, found {0}" -f $link.Count) }
-foreach ($needle in 'comfystudy.exe', 'comfystudy_core.lib', 'main.cpp.obj') {
-  if (-not $link[0].Contains($needle)) { Fail "link command lacks '$needle'" }
+if ($link.Count -ne 2) { Fail ("expected exactly 2 link commands (the program and the test), found {0}" -f $link.Count) }
+$programLink = @($link | Where-Object { $_.Contains('comfystudy.exe') })
+if ($programLink.Count -ne 1) { Fail 'expected one link command for comfystudy.exe' }
+foreach ($needle in 'comfystudy_core.lib', 'main.cpp.obj') {
+  if (-not $programLink[0].Contains($needle)) { Fail "link command for comfystudy.exe lacks '$needle'" }
 }
+$testLink = @($link | Where-Object { $_.Contains('test_greeting.exe') })
+if ($testLink.Count -ne 1 -or -not $testLink[0].Contains('comfystudy_core.lib')) { Fail 'the test program must link comfystudy_core.lib' }
 if (-not (Test-Path $debugExe)) { Fail 'debug executable was not produced' }
 $run = Run-Exe $debugExe
 if ($run.Code -ne 0 -or $run.Text -ne $expected) { Fail ("debug exe printed '{0}' (exit {1}), expected '{2}'" -f $run.Text, $run.Code, $expected) }
-Ok '1 verbose debug build: 2 compile commands, 1 link command, program prints the greeting'
+$ct = Run-Tool 'ctest' @('--preset', 'windows-debug')
+if ($ct.Code -ne 0 -or -not (($ct.Lines -join "`n") -match '100% tests passed')) { Fail ("ctest failed (exit {0}): {1}" -f $ct.Code, ($ct.Lines -join ' | ')) }
+Ok '1 verbose debug build: 3 compile commands, 2 link commands, the program prints the greeting, ctest passes'
 
 # --- 2. nothing to do the second time -------------------------------------------------------
 $r = Build 'windows-debug' @()
@@ -83,10 +89,11 @@ function Rebuild-After-Edit([string]$header, [int]$expectedObjects, [string]$wha
     $null = Build 'windows-debug' @()
   }
 }
-$cxx = @(Rebuild-After-Edit $versionHeader 1 'editing version.h')
-if (-not ($cxx[0] -match 'greeting\.cpp')) { Fail 'editing version.h must rebuild greeting.cpp only' }
-$null = Rebuild-After-Edit $greetingHeader 2 'editing greeting.h'
-Ok '3 editing version.h rebuilds only greeting.cpp, editing greeting.h rebuilds both objects'
+$cxx = @(Rebuild-After-Edit $versionHeader 2 'editing version.h')
+$cxxText = $cxx -join "`n"
+if ($cxxText -notmatch 'src\\greeting\.cpp' -or $cxxText -notmatch 'test_greeting\.cpp' -or $cxxText -match 'main\.cpp') { Fail 'editing version.h must rebuild greeting.cpp and test_greeting.cpp, but not main.cpp' }
+$null = Rebuild-After-Edit $greetingHeader 3 'editing greeting.h'
+Ok '3 editing version.h rebuilds greeting.cpp and test_greeting.cpp (not main.cpp), editing greeting.h rebuilds all three objects'
 
 # --- 4. release build is separate ---------------------------------------------------------------
 $stamps = @{}
@@ -96,7 +103,7 @@ if ($r.Code -ne 0) { Fail 'cmake --preset windows-release failed' }
 $r = Build 'windows-release' @('--verbose')
 if ($r.Code -ne 0) { Fail ("release build failed (exit {0})" -f $r.Code) }
 $compile = Compile-Lines $r.Lines
-if ($compile.Count -ne 2) { Fail 'release build should compile two files' }
+if ($compile.Count -ne 3) { Fail 'release build should compile three files' }
 foreach ($line in $compile) {
   if (-not $line.Contains('/O2') -or $line -notmatch '-MD(\s|$)') { Fail 'release compile command must have /O2 and -MD' }
 }

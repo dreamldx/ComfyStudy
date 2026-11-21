@@ -32,5 +32,9 @@
     { "name": "windows-release", "configurePreset": "windows-release" },
     { "name": "windows-vs-debug", "configurePreset": "windows-vs", "configuration": "Debug" },
     { "name": "windows-vs-release", "configurePreset": "windows-vs", "configuration": "Release" }
+  ],
+  "testPresets": [
+    { "name": "windows-debug", "configurePreset": "windows-debug", "output": { "outputOnFailure": true } },
+    { "name": "windows-release", "configurePreset": "windows-release", "output": { "outputOnFailure": true } }
   ]
 }
