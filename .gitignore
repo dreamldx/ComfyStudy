@@ -1,0 +1,8 @@
+build/
+bin/
+.env
+vcpkg_installed/
+*.pdb
+*.ilk
+*.log
+docs/superpowers/
