@@ -6,6 +6,8 @@
 
 > 这是一个学习项目，也是一份教程：代码是教程的配套，每一章对应一个 Git tag，可以随时回到“这一章做完时”的代码。
 
+**在线阅读教程：** https://dreamldx.github.io/ComfyStudy/ （每完成一个章节、推送对应的章节 tag 后更新，内容对应最近完成的章节）
+
 ## 特点
 
 - **节点由 C++ 实现**，不依赖 ComfyUI 进程：句柄式即时执行，LLM 每调用一个节点就立刻执行并返回句柄。
@@ -79,6 +81,14 @@ git checkout chapter-0.0-repo-init
 ## 开发环境
 
 Windows 11；MSVC（Visual Studio 18）；CMake（3.25 以上）与 Ninja；vcpkg；NVIDIA GPU 与 CUDA 13（开发机为 RTX 4090 24GB）；Discord 机器人应用与令牌；OpenAI 或 Anthropic 的 API 密钥。具体版本随章节记录在教程里。
+
+## 本地预览教程
+
+```text
+pip install -r requirements-docs.txt
+python scripts/make-site-nav.py
+mkdocs serve -f mkdocs.generated.yml
+```
 
 ## 当前进度
 

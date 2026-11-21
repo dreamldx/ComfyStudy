@@ -6,3 +6,5 @@ vcpkg_installed/
 *.ilk
 *.log
 docs/superpowers/
+site/
+mkdocs.generated.yml

@@ -1,0 +1,52 @@
+name: Pages
+
+# Builds the tutorial (docs/tutorial) with MkDocs Material and deploys it to GitHub Pages.
+# It runs when a chapter is finished, i.e. when a chapter tag (chapter-*) is pushed, so the
+# site shows the tutorial as of the last finished chapter. Run it by hand (workflow_dispatch)
+# to publish documentation fixes between chapters.
+on:
+  push:
+    tags: ['chapter-*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      NO_MKDOCS_2_WARNING: '1'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-docs.txt
+      - name: Install MkDocs
+        run: pip install -r requirements-docs.txt
+      - name: Generate the navigation
+        run: python scripts/make-site-nav.py
+      - name: Build the site
+        run: mkdocs build -f mkdocs.generated.yml --strict
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

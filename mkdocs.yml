@@ -1,0 +1,56 @@
+site_name: ComfyStudy
+site_description: 用 C++ 从零实现 ComfyUI 式图像生成系统的逐章中文教程
+site_url: https://dreamldx.github.io/ComfyStudy/
+repo_url: https://github.com/dreamldx/ComfyStudy
+repo_name: dreamldx/ComfyStudy
+edit_uri: edit/main/docs/tutorial/
+
+docs_dir: docs/tutorial
+site_dir: site
+exclude_docs: |
+  _template/
+
+theme:
+  name: material
+  language: zh
+  font: false
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/weather-night
+        name: 切换到深色模式
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: 切换到浅色模式
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - toc.follow
+
+plugins:
+  - search:
+      lang:
+        - zh
+        - en
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.details
+
+# The navigation is generated from the phase READMEs by scripts/make-site-nav.py
+# into mkdocs.generated.yml (which inherits this file); build with that file.
