@@ -1,0 +1,86 @@
+name: Phase release
+
+# Phase tags (phase-NN-<slug>) are created when a phase STARTS. Pushing one creates a
+# pre-release whose notes list the phase's chapters. When the phase is finished, run this
+# workflow manually (workflow_dispatch) with the phase's last chapter tag to turn the
+# pre-release into a regular release.
+on:
+  push:
+    tags: ['phase-*']
+  workflow_dispatch:
+    inputs:
+      phase_tag:
+        description: 'Phase tag, e.g. phase-00-toolchain'
+        required: true
+      last_chapter_tag:
+        description: 'Last chapter tag of the phase, e.g. chapter-0.5-dll-management'
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GH_REPO: ${{ github.repository }}
+
+jobs:
+  start:
+    name: Create pre-release for a new phase tag
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Create the pre-release if it does not exist
+        env:
+          PHASE: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if gh release view "$PHASE" >/dev/null 2>&1; then
+            echo "Release $PHASE already exists; nothing to do."
+            exit 0
+          fi
+          README="docs/tutorial/$PHASE/README.md"
+          TITLE=$(head -n 1 "$README" | sed 's/^# //')
+          TABLE=$(awk '/^## 本阶段章节/{f=1;next} /^## /{f=0} f' "$README" \
+            | sed -E "s#\]\(([0-9][^)]*\.md)\)#](https://github.com/${GH_REPO}/blob/main/docs/tutorial/${PHASE}/\1)#g")
+          {
+            echo "状态：**进行中**（预发布）。阶段完成后会转为正式发布。"
+            echo
+            echo "阶段 tag：\`$PHASE\`（指向本阶段开始时的提交）"
+            echo
+            echo "## 本阶段章节"
+            echo "$TABLE"
+          } > notes.md
+          gh release create "$PHASE" --title "$TITLE" --notes-file notes.md --prerelease
+
+  complete:
+    name: Complete the release of a finished phase
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Turn the pre-release into a regular release
+        env:
+          PHASE: ${{ inputs.phase_tag }}
+          LAST: ${{ inputs.last_chapter_tag }}
+        run: |
+          set -euo pipefail
+          git rev-parse --verify "refs/tags/$PHASE" >/dev/null
+          git rev-parse --verify "refs/tags/$LAST" >/dev/null
+          README="docs/tutorial/$PHASE/README.md"
+          TITLE=$(head -n 1 "$README" | sed 's/^# //')
+          TABLE=$(awk '/^## 本阶段章节/{f=1;next} /^## /{f=0} f' "$README" \
+            | sed -E "s#\]\(([0-9][^)]*\.md)\)#](https://github.com/${GH_REPO}/blob/main/docs/tutorial/${PHASE}/\1)#g")
+          {
+            echo "状态：**已完成**。本阶段最后一章的 tag：\`$LAST\`。"
+            echo
+            echo "- 阶段起点：\`$PHASE\`"
+            echo "- 查看本阶段的全部改动：[$PHASE...$LAST](https://github.com/${GH_REPO}/compare/${PHASE}...${LAST})"
+            echo
+            echo "## 本阶段章节"
+            echo "$TABLE"
+          } > notes.md
+          gh release edit "$PHASE" --title "$TITLE" --notes-file notes.md --prerelease=false --latest

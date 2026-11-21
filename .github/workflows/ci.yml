@@ -1,0 +1,22 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'appendix/**']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  docs:
+    name: Tutorial documents
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Check tutorial documents and tags
+        shell: powershell
+        run: ./scripts/check-docs.ps1 -CheckTags
