@@ -80,7 +80,40 @@ git checkout chapter-0.0-repo-init
 
 ## 开发环境
 
-Windows 11；MSVC（Visual Studio 18）；CMake（3.25 以上）与 Ninja；vcpkg；NVIDIA GPU 与 CUDA 13（开发机为 RTX 4090 24GB）；Discord 机器人应用与令牌；OpenAI 或 Anthropic 的 API 密钥。具体版本随章节记录在教程里。
+Windows 11；**PowerShell**（必需的开发 shell）；MSVC（Visual Studio 18）；CMake（3.25 以上）与 Ninja；vcpkg；NVIDIA GPU 与 CUDA 13（开发机为 RTX 4090 24GB）；Discord 机器人应用与令牌；OpenAI 或 Anthropic 的 API 密钥。具体版本随章节记录在教程里。
+
+### 辅助脚本
+
+开发环境**强制使用 PowerShell**（Windows 自带的 Windows PowerShell 5.1 即可，PowerShell 7 也可以）。`scripts/` 下的脚本都是 PowerShell 脚本（`make-site-nav.py` 是唯一的 Python 脚本），在 PowerShell 里**直接运行**，不用再套一层 `powershell` 命令，也不支持在 cmd 或 Git Bash 里运行：
+
+```text
+.\scripts\verify.ps1
+```
+
+- 脚本用自己的位置找仓库根目录，所以在哪个目录运行都可以，不在仓库根目录就写完整路径。
+- 如果提示“禁止运行脚本”，在 PowerShell 里执行一次 `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`。
+- 除 `env.ps1` 外，脚本运行结束后会还原你的 PowerShell 会话：环境变量和当前目录都不会被改动。
+
+`scripts/` 下的脚本是开发和验证用的辅助工具，不属于教程内容：
+
+| 脚本 | 作用 | 用法 |
+|---|---|---|
+| `env.ps1` | 把**当前 PowerShell 会话**切换到 MSVC x64 编译环境：定位 Visual Studio，运行 `vcvars64.bat`，并把环境变量导入当前会话。可以重复运行 | `. .\scripts\env.ps1`（注意开头的点和空格，称为“点源”），成功会打印 `MSVC x64 environment ready` |
+| `dev.ps1` | 在 MSVC 环境里运行任意命令，并先进入仓库根目录；命令结束后还原会话，所以不必先运行 `env.ps1` | `.\scripts\dev.ps1 cmake --preset windows-debug` |
+| `check-env.ps1` | 检查需要的工具是否齐全：`cl`（x64）、`link`、`dumpbin`、`cmake`（3.25 以上）、`ninja`、`git`、`vcpkg`、`powershell`，缺哪个就列出哪个 | 先 `. .\scripts\env.ps1`，再 `.\scripts\check-env.ps1` |
+| `check-build.ps1` | 验证 CMake 构建的行为：Debug 与 Release 分别构建；第二次构建无事可做；改一个头文件只重编包含它的源文件；Release 不碰 Debug 的文件；两者的运行库不同；`clean` 目标有效 | 先 `. .\scripts\env.ps1`，再 `.\scripts\check-build.ps1` |
+| `check-vs.ps1` | 验证 `windows-vs` 预设：能生成 Visual Studio 解决方案和项目文件，`comfystudy` 是启动项目，能构建，且程序输出正确 | 先 `. .\scripts\env.ps1`，再 `.\scripts\check-vs.ps1` |
+| `check-docs.ps1` | 检查教程章节：状态行合法、已完成的章节九个小节齐全、`<!-- src: -->` 标注的代码片段与源码一致（已打 tag 的章节按 tag 当时的源码比对）、附录章节的分支名正确。加 `-CheckTags` 还会检查章节 tag 与阶段 tag 是否真的存在 | `.\scripts\check-docs.ps1 [-CheckTags]` |
+| `verify.ps1` | 总验证入口：依次运行上面的检查（有对应脚本才运行，测试加入后还会运行 `ctest`），任何一步失败就停下并指出是哪一步；每个阶段在独立的 PowerShell 进程里运行，并自己设置 MSVC 环境。每个 tag 上的代码都应通过它 | `.\scripts\verify.ps1 [-CheckTags]` |
+| `make-site-nav.py` | 从各阶段 README 里的章节表生成教程网站的导航文件 `mkdocs.generated.yml`，下面的本地预览和 GitHub Pages 构建都会用到 | `python scripts/make-site-nav.py` |
+
+**执行了 `env.ps1` 却找不到 `cl` 或 `link`？** `env.ps1` 只改变**当前这个 PowerShell 进程**的环境变量，下面几种情况会让它看起来“没有效果”：
+
+- `cl`、`cmake` 等命令不是在**同一个 PowerShell 会话**里运行的（比如开了另一个窗口）。
+- 在 cmd 或 Git Bash 里启动了 `powershell` 去运行它：那是一个子进程，退出后环境就丢了。
+- 在 Claude Code 里用 `!` 前缀执行：每条命令都是一个独立的 shell，上一条设置的环境不会留给下一条。
+
+办法：在同一个 PowerShell 窗口里先运行 `. .\scripts\env.ps1`，再运行后面的命令；或者每条命令前面加 `.\scripts\dev.ps1`（例如 `.\scripts\dev.ps1 cl`）；或者直接使用开始菜单里的 “Developer PowerShell for VS”，它已经设置好了环境。
 
 ## 本地预览教程
 
@@ -92,7 +125,7 @@ mkdocs serve -f mkdocs.generated.yml
 
 ## 当前进度
 
-阶段 0「工具链与骨架」进行中：0.0 已完成，其余章节尚未开始。
+阶段 0「工具链与骨架」进行中：0.0、0.1 已完成，其余章节尚未开始。
 
 ## 仓库结构
 
