@@ -14,7 +14,7 @@
 - **Skills 按需加载工具**：LLM 起初只看到 Skill 目录，加载后才看到对应的强类型工具。
 - **LLM 双协议**：同时支持 OpenAI 与 Anthropic，并支持图像输入，可以看图自我修正。
 - **推理自己手写**：用 libtorch 与 ggml 各写一遍 SD 1.5 的 UNet 并逐数对照；进阶线支持 FLUX.1 [schnell]、Qwen-Image，可直接加载 GGUF、fp8 等量化权重。
-- **Discord 作为对话通道**，配置放在 `.env`。
+- **Discord 作为对话通道**，配置放在 `config.toml`（或 `config.ini`），也可以用命令行和环境变量覆盖。
 - **构建用 MSVC + CMake（Ninja）**，依赖用 vcpkg。
 
 ## 学习路线
@@ -125,7 +125,7 @@ mkdocs serve -f mkdocs.generated.yml
 
 ## 当前进度
 
-阶段 0「工具链与骨架」进行中：0.0、0.1、0.2、0.3 已完成，其余章节尚未开始。
+阶段 0「工具链与骨架」进行中：0.0、0.1、0.2、0.3、0.4 已完成，其余章节尚未开始。
 
 ## 仓库结构
 
