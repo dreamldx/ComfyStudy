@@ -1,9 +1,9 @@
 # 阶段 0：工具链与骨架
 
 - 类型：主线
-- 状态：编写中（0.0、0.1、0.2、0.3、0.4 已完成）
+- 状态：已完成（0.0 至 0.5）
 - 阶段 tag：`phase-00-toolchain`（阶段开始时打在主线上；阶段完成后在 GitHub 上发布 Release）
-- 完成标准：运行程序时输出已加载的配置项名称，并通过 DLL 自检
+- 完成标准：运行程序时输出已加载的配置项名称，并能列出程序加载的每个 DLL 的位置、版本和所属的 vcpkg 包
 
 ## 本阶段章节
 
@@ -14,16 +14,45 @@
 | 0.2 | [测试（CTest）](0.2-tests-ctest.md) | `chapter-0.2-tests-ctest` | 加入测试框架并用 CTest 运行 |
 | 0.3 | [vcpkg 依赖管理](0.3-vcpkg-deps.md) | `chapter-0.3-vcpkg-deps` | 用 vcpkg manifest 引入 nlohmann/json、libcurl、GoogleTest、spdlog 和 CLI11，并接入 CMake，把测试迁移到 GoogleTest |
 | 0.4 | [命令行与配置文件](0.4-cli-config.md) | `chapter-0.4-cli-config` | 用 CLI11 读取命令行、配置文件（INI 或 TOML）和环境变量，优先级为环境变量 < 配置文件 < 命令行，打印配置，用 spdlog 记录加载过程，密钥遮蔽 |
-| 0.5 | [DLL 集中管理与自检](0.5-dll-management.md) | `chapter-0.5-dll-management` | 让所有 DLL 与可执行文件放在同一目录，提供 `deploy` 与 `check-dlls` 目标，启动时设置 DLL 搜索目录并自检 |
+| 0.5 | [DLL 集中管理与依赖检查](0.5-dll-management.md) | `chapter-0.5-dll-management` | 让所有 DLL 与可执行文件放在同一目录，提供 `deploy` 与 `check-dlls` 目标，启动时设置 DLL 搜索目录，用 `--dependency-check` 列出已加载 DLL 的位置、版本和所属 vcpkg 包 |
 
 ## 阶段总览
 
-待写。（本阶段要解决什么问题、学完能做什么、涉及的核心概念、与前后阶段的关系。）
+这一阶段搭起后面所有阶段共用的地基：一个能在 Windows 上用 MSVC、CMake 和 Ninja 构建的 C++ 项目，有测试、有第三方库、有配置、有对 DLL 的掌控。后面不管是调用 LLM、做图像处理，还是实现扩散模型，都在这个骨架上继续长。
+
+学完这一阶段，你能：
+
+- 在 MSVC 环境里用 CMake 预设构建 Debug 和 Release，读懂 `cl` 和 `link` 的构建输出，知道 Ninja 为什么只重编改动的文件，也能生成 Visual Studio 解决方案。
+- 用 CTest 和 GoogleTest 写测试并运行。
+- 用 vcpkg 的 manifest 模式管理依赖（nlohmann/json、libcurl、GoogleTest、spdlog、CLI11）。
+- 用 CLI11 同时读取命令行、配置文件（INI 或 TOML）和环境变量，并把密钥遮蔽起来。
+- 知道 Windows 怎么找 DLL，让程序的 DLL 集中在一个目录，并能检查、列出它们。
+
+核心概念：预设与构建目录、静态库与可执行文件、测试夹具、manifest 与基线、配置的优先级（环境变量 < 配置文件 < 命令行）、DLL 搜索顺序与清单。
+
+与后面的关系：阶段 1 起要用 libcurl 发请求、用配置文件放 Token 与密钥、用测试守住行为，这些都在本阶段准备好了。
 
 ## 演示
 
-待写。（本阶段结束时可以向读者展示的“演示咒语”或运行效果。）
+```text
+cmake --preset windows-debug
+cmake --build --preset windows-debug
+ctest --preset windows-debug
+build\windows-debug\bin\comfystudy.exe --help
+build\windows-debug\bin\comfystudy.exe
+cmake --build --preset windows-debug --target check-dlls
+build\windows-debug\bin\comfystudy.exe --dependency-check
+```
+
+依次是：构建并跑通全部测试；看自动生成的帮助；用配置文件、环境变量和命令行运行并看到打了码的配置；检查 DLL 部署；列出程序加载的每个 DLL。
 
 ## 技术资料汇总
 
-待写。（本阶段用到的库与版本、关键设计决定。详细内容记在各章“技术资料”一节。）
+- 工具链：MSVC（x64）、CMake 4.x、Ninja、vcpkg（manifest 模式，固定基线）。
+- 依赖：nlohmann/json、libcurl、GoogleTest、spdlog、CLI11。
+- 关键设计决定：
+  - 除了 `main()`，所有代码都编进静态库 `comfystudy_core`，程序和每个测试都链接它。
+  - 配置文件不分节，键、命令行选项和环境变量用同一个名字；空值等于没有设置。
+  - 所有 DLL 放在 `bin` 目录，`dlls.manifest` 记录名字、SHA-256 和所属的 vcpkg 包；`check-dlls` 检查依赖，`--dependency-check` 只展示、不判断。
+  - 密钥在输出和日志里一律遮蔽。
+- 详细内容见各章“技术资料”一节。

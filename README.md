@@ -23,7 +23,7 @@
 
 | 阶段 | 主题 | 完成标准 |
 |---|---|---|
-| 0 | [工具链与骨架](docs/tutorial/phase-00-toolchain/README.md) | 运行程序时输出已加载的配置项名称，并通过 DLL 自检 |
+| 0 | [工具链与骨架](docs/tutorial/phase-00-toolchain/README.md) | 运行程序时输出已加载的配置项名称，并能列出程序加载的每个 DLL 的位置、版本和所属的 vcpkg 包 |
 | 1 | [LLM 与对话通道](docs/tutorial/phase-01-llm-chat/README.md) | 在 Discord 里与机器人对话，它能调用玩具工具并回答，也能看懂用户发来的图片 |
 | 2 | [OpenCV：句柄系统与图像处理](docs/tutorial/phase-02-opencv-handles/README.md) | 在 Discord 里说“把这张图缩小一半并加模糊”，机器人自己装载 Skill、调用节点并发回结果图；LLM 还能看到结果图并自行调整重做 |
 | 3 | [libtorch 基础与采样数学](docs/tutorial/phase-03-libtorch-sampling/README.md) | 不用任何模型，LLM 驱动采样节点把噪声迭代成可见结果 |
@@ -125,7 +125,7 @@ mkdocs serve -f mkdocs.generated.yml
 
 ## 当前进度
 
-阶段 0「工具链与骨架」进行中：0.0、0.1、0.2、0.3、0.4 已完成，其余章节尚未开始。
+阶段 0「工具链与骨架」已完成（0.0 至 0.5），阶段 1 尚未开始。
 
 ## 仓库结构
 
