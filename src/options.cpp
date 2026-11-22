@@ -1,6 +1,5 @@
 #include "options.h"
 
-#include <algorithm>
 #include <memory>
 #include <sstream>
 
@@ -47,6 +46,10 @@ Result Parse(const std::vector<std::string>& args,
         ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);  // a repeated key: last wins
   }
   app.add_flag("-v,--verbose", result.options.verbose, "Show debug messages");
+#if defined(_WIN32)
+  app.add_flag("--dependency-check", result.options.dependency_check,
+               "List the DLLs this program loaded (where from, version, vcpkg package) and exit");
+#endif
 
   CLI::Option* config_option = app.set_config(
       "--config", DefaultConfigFile(config_candidates), "Read settings from this INI or TOML file");

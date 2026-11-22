@@ -14,3 +14,5 @@ add_comfystudy_test(test_deps)
 add_comfystudy_test(test_logging)
 add_comfystudy_test(test_options)
 add_comfystudy_test(test_config)
+# Tests that exist on one system only are registered by the platform file.
+comfystudy_platform_tests()

@@ -13,6 +13,9 @@ namespace options {
 struct Options {
   config::Values values;                          // every known key, resolved (see Parse)
   bool verbose = false;                           // -v / --verbose
+#if defined(_WIN32)
+  bool dependency_check = false;                  // --dependency-check (Windows only)
+#endif
   std::optional<std::filesystem::path> config_file;  // the config file that was read, if any
 };
 

@@ -75,6 +75,9 @@ TEST_F(OptionsTest, NothingGivenMeansTheDefaults) {
   EXPECT_EQ(result.options.values.at("llm_model"), "");
   EXPECT_FALSE(result.options.config_file.has_value());
   EXPECT_FALSE(result.options.verbose);
+#if defined(_WIN32)
+  EXPECT_FALSE(result.options.dependency_check);
+#endif
 }
 
 TEST_F(OptionsTest, EveryKnownKeyHasAValue) {
@@ -203,6 +206,12 @@ TEST_F(OptionsTest, VerboseFlag) {
   EXPECT_TRUE(Run({"--verbose"}).options.verbose);
   EXPECT_TRUE(Run({"-v"}).options.verbose);
 }
+
+#if defined(_WIN32)
+TEST_F(OptionsTest, DependencyCheckFlag) {
+  EXPECT_TRUE(Run({"--dependency-check"}).options.dependency_check);
+}
+#endif
 
 TEST_F(OptionsTest, UnknownOptionIsAnError) {
   const auto result = Run({"--bogus"});

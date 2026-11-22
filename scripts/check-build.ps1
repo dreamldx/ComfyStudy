@@ -43,8 +43,8 @@ if ($r.Code -ne 0) { Fail ("cmake --preset windows-debug failed (exit {0}): {1}"
 $r = Build 'windows-debug' @('--verbose')
 if ($r.Code -ne 0) { Fail ("debug build failed (exit {0}): {1}" -f $r.Code, ($r.Lines -join ' | ')) }
 $compile = Compile-Lines $r.Lines
-if ($compile.Count -ne 10) { Fail ("expected exactly 10 compile commands (5 library/program sources and 5 tests), found {0}" -f $compile.Count) }
-foreach ($name in 'main.cpp', 'greeting.cpp', 'net_probe.cpp', 'options.cpp', 'config.cpp', 'test_greeting.cpp', 'test_deps.cpp', 'test_logging.cpp', 'test_options.cpp', 'test_config.cpp') {
+if ($compile.Count -ne 12) { Fail ("expected exactly 12 compile commands (6 library/program sources and 6 tests), found {0}" -f $compile.Count) }
+foreach ($name in 'main.cpp', 'greeting.cpp', 'net_probe.cpp', 'options.cpp', 'config.cpp', 'dll_info.cpp', 'test_greeting.cpp', 'test_deps.cpp', 'test_logging.cpp', 'test_options.cpp', 'test_config.cpp', 'test_dll_info.cpp') {
   $line = @($compile | Where-Object { $_.Contains('\' + $name) })
   if ($line.Count -ne 1) { Fail "expected one compile command for $name" }
   foreach ($flag in '/Fo', '-std:c++20') {
@@ -52,7 +52,7 @@ foreach ($name in 'main.cpp', 'greeting.cpp', 'net_probe.cpp', 'options.cpp', 'c
   }
 }
 $link = @($r.Lines | Where-Object { $_ -match 'link\.exe' })
-if ($link.Count -ne 6) { Fail ("expected exactly 6 link commands (the program and the five tests), found {0}" -f $link.Count) }
+if ($link.Count -ne 7) { Fail ("expected exactly 7 link commands (the program and the six tests), found {0}" -f $link.Count) }
 $programLink = @($link | Where-Object { $_.Contains('comfystudy.exe') })
 if ($programLink.Count -ne 1) { Fail 'expected one link command for comfystudy.exe' }
 foreach ($needle in 'comfystudy_core.lib', 'main.cpp.obj') {
@@ -65,7 +65,7 @@ $run = Run-Exe $debugExe
 if ($run.Code -ne 0 -or -not $run.Text.StartsWith($expected) -or $run.Text -notmatch 'libcurl/') { Fail ("debug exe printed '{0}' (exit {1}), expected the greeting '{2}' followed by the libcurl version" -f $run.Text, $run.Code, $expected) }
 $ct = Run-Tool 'ctest' @('--preset', 'windows-debug')
 if ($ct.Code -ne 0 -or -not (($ct.Lines -join "`n") -match '100% tests passed')) { Fail ("ctest failed (exit {0}): {1}" -f $ct.Code, ($ct.Lines -join ' | ')) }
-Ok '1 verbose debug build: 10 compile commands, 6 link commands, the program prints the greeting, ctest passes'
+Ok '1 verbose debug build: 12 compile commands, 7 link commands, the program prints the greeting, ctest passes'
 
 # --- 2. nothing to do the second time -------------------------------------------------------
 $r = Build 'windows-debug' @()
@@ -104,7 +104,7 @@ if ($r.Code -ne 0) { Fail 'cmake --preset windows-release failed' }
 $r = Build 'windows-release' @('--verbose')
 if ($r.Code -ne 0) { Fail ("release build failed (exit {0})" -f $r.Code) }
 $compile = Compile-Lines $r.Lines
-if ($compile.Count -ne 10) { Fail 'release build should compile ten files' }
+if ($compile.Count -ne 12) { Fail 'release build should compile twelve files' }
 foreach ($line in $compile) {
   if (-not $line.Contains('/O2') -or $line -notmatch '-MD(\s|$)') { Fail 'release compile command must have /O2 and -MD' }
 }
