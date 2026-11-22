@@ -1,0 +1,22 @@
+# Copy this file to config.toml and fill in your own values. The real config.toml is never committed.
+# Run the program from the project root so it finds ./config.toml (or pass --config <path>).
+# Priority: command line (--llm_model gpt-4o) > this file > environment variable (LLM_MODEL).
+# An empty value means "not set". Use config.ini.example if you prefer INI syntax.
+
+# Discord bot token (create a bot in the Discord developer portal).
+discord_token = ""
+
+# Which LLM protocol to use: "openai" (the default) or "anthropic".
+# llm_provider = "openai"
+# Model name sent to the provider.
+llm_model = ""
+
+openai_api_key = ""
+# Change this to use an OpenAI-compatible server (default: https://api.openai.com/v1).
+# openai_base_url = "https://api.openai.com/v1"
+
+anthropic_api_key = ""
+# anthropic_base_url = "https://api.anthropic.com"
+
+# Folder that holds the image-generation model files (default: models).
+# model_dir = "models"

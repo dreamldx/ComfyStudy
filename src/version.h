@@ -1,3 +1,3 @@
 #pragma once
 
-#define COMFYSTUDY_VERSION "0.3"
+#define COMFYSTUDY_VERSION "0.4"

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(ComfyStudy VERSION 0.3.0 LANGUAGES CXX)
+project(ComfyStudy VERSION 0.4.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -25,7 +25,8 @@ add_library(comfystudy_options INTERFACE)
 target_compile_options(comfystudy_options INTERFACE ${COMFYSTUDY_COMPILE_OPTIONS})
 
 # Everything except main() lives in a static library, so tests can link it too.
-add_library(comfystudy_core STATIC src/greeting.cpp src/net_probe.cpp)
+add_library(comfystudy_core STATIC
+  src/greeting.cpp src/net_probe.cpp src/options.cpp src/config.cpp)
 target_include_directories(comfystudy_core PUBLIC src)
 target_link_libraries(comfystudy_core PUBLIC comfystudy_options
   nlohmann_json::nlohmann_json CURL::libcurl spdlog::spdlog CLI11::CLI11)
