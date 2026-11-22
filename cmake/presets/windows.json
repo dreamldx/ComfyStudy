@@ -2,8 +2,18 @@
   "version": 6,
   "configurePresets": [
     {
+      "name": "windows-vcpkg",
+      "hidden": true,
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-windows",
+        "VCPKG_INSTALLED_DIR": "${sourceDir}/vcpkg_installed"
+      }
+    },
+    {
       "name": "windows-base",
       "hidden": true,
+      "inherits": "windows-vcpkg",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
@@ -22,6 +32,7 @@
     },
     {
       "name": "windows-vs",
+      "inherits": "windows-vcpkg",
       "generator": "Visual Studio 18 2026",
       "architecture": { "value": "x64", "strategy": "set" },
       "binaryDir": "${sourceDir}/build/windows-vs"

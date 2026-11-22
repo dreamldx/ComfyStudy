@@ -43,8 +43,8 @@ if ($r.Code -ne 0) { Fail ("cmake --preset windows-debug failed (exit {0}): {1}"
 $r = Build 'windows-debug' @('--verbose')
 if ($r.Code -ne 0) { Fail ("debug build failed (exit {0}): {1}" -f $r.Code, ($r.Lines -join ' | ')) }
 $compile = Compile-Lines $r.Lines
-if ($compile.Count -ne 3) { Fail ("expected exactly 3 compile commands (main, greeting, test_greeting), found {0}" -f $compile.Count) }
-foreach ($name in 'main.cpp', 'greeting.cpp', 'test_greeting.cpp') {
+if ($compile.Count -ne 6) { Fail ("expected exactly 6 compile commands (main, greeting, net_probe, and three tests), found {0}" -f $compile.Count) }
+foreach ($name in 'main.cpp', 'greeting.cpp', 'net_probe.cpp', 'test_greeting.cpp', 'test_deps.cpp', 'test_logging.cpp') {
   $line = @($compile | Where-Object { $_.Contains('\' + $name) })
   if ($line.Count -ne 1) { Fail "expected one compile command for $name" }
   foreach ($flag in '/Fo', '-std:c++20') {
@@ -52,7 +52,7 @@ foreach ($name in 'main.cpp', 'greeting.cpp', 'test_greeting.cpp') {
   }
 }
 $link = @($r.Lines | Where-Object { $_ -match 'link\.exe' })
-if ($link.Count -ne 2) { Fail ("expected exactly 2 link commands (the program and the test), found {0}" -f $link.Count) }
+if ($link.Count -ne 4) { Fail ("expected exactly 4 link commands (the program and the three tests), found {0}" -f $link.Count) }
 $programLink = @($link | Where-Object { $_.Contains('comfystudy.exe') })
 if ($programLink.Count -ne 1) { Fail 'expected one link command for comfystudy.exe' }
 foreach ($needle in 'comfystudy_core.lib', 'main.cpp.obj') {
@@ -62,10 +62,10 @@ $testLink = @($link | Where-Object { $_.Contains('test_greeting.exe') })
 if ($testLink.Count -ne 1 -or -not $testLink[0].Contains('comfystudy_core.lib')) { Fail 'the test program must link comfystudy_core.lib' }
 if (-not (Test-Path $debugExe)) { Fail 'debug executable was not produced' }
 $run = Run-Exe $debugExe
-if ($run.Code -ne 0 -or $run.Text -ne $expected) { Fail ("debug exe printed '{0}' (exit {1}), expected '{2}'" -f $run.Text, $run.Code, $expected) }
+if ($run.Code -ne 0 -or -not $run.Text.StartsWith($expected) -or $run.Text -notmatch 'libcurl/') { Fail ("debug exe printed '{0}' (exit {1}), expected the greeting '{2}' followed by the libcurl version" -f $run.Text, $run.Code, $expected) }
 $ct = Run-Tool 'ctest' @('--preset', 'windows-debug')
 if ($ct.Code -ne 0 -or -not (($ct.Lines -join "`n") -match '100% tests passed')) { Fail ("ctest failed (exit {0}): {1}" -f $ct.Code, ($ct.Lines -join ' | ')) }
-Ok '1 verbose debug build: 3 compile commands, 2 link commands, the program prints the greeting, ctest passes'
+Ok '1 verbose debug build: 6 compile commands, 4 link commands, the program prints the greeting, ctest passes'
 
 # --- 2. nothing to do the second time -------------------------------------------------------
 $r = Build 'windows-debug' @()
@@ -92,8 +92,9 @@ function Rebuild-After-Edit([string]$header, [int]$expectedObjects, [string]$wha
 $cxx = @(Rebuild-After-Edit $versionHeader 2 'editing version.h')
 $cxxText = $cxx -join "`n"
 if ($cxxText -notmatch 'src\\greeting\.cpp' -or $cxxText -notmatch 'test_greeting\.cpp' -or $cxxText -match 'main\.cpp') { Fail 'editing version.h must rebuild greeting.cpp and test_greeting.cpp, but not main.cpp' }
-$null = Rebuild-After-Edit $greetingHeader 3 'editing greeting.h'
-Ok '3 editing version.h rebuilds greeting.cpp and test_greeting.cpp (not main.cpp), editing greeting.h rebuilds all three objects'
+$greetingObjs = (Rebuild-After-Edit $greetingHeader 3 'editing greeting.h') -join "`n"
+if ($greetingObjs -notmatch 'main\.cpp' -or $greetingObjs -notmatch 'src\\greeting\.cpp' -or $greetingObjs -notmatch 'test_greeting\.cpp') { Fail 'editing greeting.h must rebuild main.cpp, greeting.cpp and test_greeting.cpp' }
+Ok '3 editing version.h rebuilds greeting.cpp and test_greeting.cpp (not main.cpp), editing greeting.h rebuilds main, greeting and test_greeting'
 
 # --- 4. release build is separate ---------------------------------------------------------------
 $stamps = @{}
@@ -103,13 +104,13 @@ if ($r.Code -ne 0) { Fail 'cmake --preset windows-release failed' }
 $r = Build 'windows-release' @('--verbose')
 if ($r.Code -ne 0) { Fail ("release build failed (exit {0})" -f $r.Code) }
 $compile = Compile-Lines $r.Lines
-if ($compile.Count -ne 3) { Fail 'release build should compile three files' }
+if ($compile.Count -ne 6) { Fail 'release build should compile six files' }
 foreach ($line in $compile) {
   if (-not $line.Contains('/O2') -or $line -notmatch '-MD(\s|$)') { Fail 'release compile command must have /O2 and -MD' }
 }
 if (-not (Test-Path $releaseExe)) { Fail 'release executable was not produced' }
 $run = Run-Exe $releaseExe
-if ($run.Code -ne 0 -or $run.Text -ne $expected) { Fail ("release exe printed '{0}', expected '{1}'" -f $run.Text, $expected) }
+if ($run.Code -ne 0 -or -not $run.Text.StartsWith($expected) -or $run.Text -notmatch 'libcurl/') { Fail ("release exe printed '{0}', expected the greeting '{1}' followed by the libcurl version" -f $run.Text, $expected) }
 foreach ($o in Get-ChildItem 'build\windows-debug' -Recurse -Filter *.obj) {
   if ($stamps[$o.FullName] -ne $o.LastWriteTimeUtc.Ticks) { Fail "release build touched debug object $($o.Name)" }
 }

@@ -40,7 +40,7 @@ if ($r.Code -ne 0) { Fail ("cmake --build --preset windows-vs-debug failed (exit
 $exe = 'build\windows-vs\bin\Debug\comfystudy.exe'
 if (-not (Test-Path $exe)) { Fail "$exe was not produced" }
 $out = @(& $exe 2>&1 | ForEach-Object { "$_" }) -join "`n"
-if ($LASTEXITCODE -ne 0 -or $out.Trim() -ne $expected) { Fail ("the program printed '{0}', expected '{1}'" -f $out.Trim(), $expected) }
+if ($LASTEXITCODE -ne 0 -or -not $out.Trim().StartsWith($expected) -or $out -notmatch 'libcurl/') { Fail ("the program printed '{0}', expected the greeting '{1}' followed by the libcurl version" -f $out.Trim(), $expected) }
 Ok 'built with the solution and the program prints the greeting'
 
 Write-Host 'check-vs: OK'

@@ -1,11 +1,14 @@
 #include <string>
 
-#include "check.h"
+#include <gtest/gtest.h>
+
 #include "greeting.h"
 #include "version.h"
 
-int main() {
-  CHECK_EQ(Greeting(), std::string("ComfyStudy ") + COMFYSTUDY_VERSION);
-  CHECK(!Greeting().empty());
-  return g_failures == 0 ? 0 : 1;
+TEST(Greeting, ContainsNameAndVersion) {
+  EXPECT_EQ(Greeting(), std::string("ComfyStudy ") + COMFYSTUDY_VERSION);
+}
+
+TEST(Greeting, IsNotEmpty) {
+  EXPECT_FALSE(Greeting().empty());
 }

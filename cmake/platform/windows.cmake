@@ -11,6 +11,12 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 set(COMFYSTUDY_COMPILE_OPTIONS
   /W4 /WX /permissive- /utf-8 /Zc:__cplusplus /external:anglebrackets /external:W0)
 
+# Third-party libraries come from vcpkg (see vcpkg.json); the preset points CMake at its toolchain file.
+find_package(nlohmann_json CONFIG REQUIRED)
+find_package(CURL CONFIG REQUIRED)
+find_package(spdlog CONFIG REQUIRED)
+find_package(CLI11 CONFIG REQUIRED)
+
 # Called by the top-level CMakeLists.txt once the targets exist.
 function(comfystudy_platform_targets)
   # Visual Studio only: make the program the startup project, so F5 runs it.
