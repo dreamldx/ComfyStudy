@@ -10,7 +10,7 @@
 
 | 编号 | 章节 | 提交前缀 | 目标 |
 |---|---|---|---|
-| llm-1.1 | [libcurl 三种用法的对比（easy、multi、share）](llm-1.1-curl-modes.md) | `chapter-llm-1.1-curl-modes:` | 对比 libcurl 的 easy、multi、share 三种用法：用 `curl_easy_getinfo` 读出各阶段的耗时（域名解析、建立连接、TLS 握手、首字节、总耗时），对比每次新建句柄和复用同一个句柄；用 `curl_multi_*` 在一个线程里同时发出多个请求，写出 `PostMany`（据我所知还有靠自己的事件循环驱动的 `curl_multi_socket_action`，到时核实并说明区别）；用 `curl_share_*` 让多个句柄共享数据（据我所知可以共享 DNS 缓存、TLS 会话、连接缓存、cookie，到时逐项核实），多线程使用时要提供加锁回调；最后对同一批请求（例如 20 个问题）比较顺序 easy、线程池加 easy、线程池加 easy 与 share、单线程 multi 的总耗时、线程数、内存和代码复杂度，并考虑服务的限流（429），得出机器人里该用哪一种 |
+| llm-1.1 | [libcurl 三种用法的对比（easy、multi、share）](llm-1.1-curl-modes.md) | `chapter-llm-1.1-curl-modes:` | 在同一批 LLM 请求上测出 libcurl 的 easy、multi、share 三种用法的差别（各阶段耗时、连接数、总耗时），开启 HTTP/2 并比较它和 HTTP/1.1 多连接的区别，最后选定机器人默认用“线程池加 easy” |
 | llm-1.2 | [流式输出（SSE）](llm-1.2-streaming-sse.md) | `chapter-llm-1.2-streaming-sse:` | 解析服务端推送的事件流，边收边显示；Discord 里用限速的消息编辑模拟打字效果 |
 | llm-1.3 | [结构化输出与 JSON Schema 校验](llm-1.3-structured-output.md) | `chapter-llm-1.3-structured-output:` | 让模型按给定的模式输出 JSON，校验失败就把错误回灌给模型重试 |
 | llm-1.4 | [上下文窗口与历史压缩](llm-1.4-context-window.md) | `chapter-llm-1.4-context-window:` | 估算 token 数，窗口放不下时用滑动窗口和摘要压缩旧对话，并保证工具调用与结果成对保留 |

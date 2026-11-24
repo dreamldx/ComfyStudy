@@ -54,6 +54,20 @@ foreach ($f in $chapters) {
   $rxHeaderTag = [regex]::Escape($LBL_TAG) + '`([^`]+)`'
   foreach ($l in $head) { $m = [regex]::Match($l, $rxHeaderTag); if ($m.Success) { $headerTag = $m.Groups[1].Value; break } }
   $useTag = (-not $isQuest -and $status -eq $ST_TAGGED -and $headerTag -and ($existingTags -contains $headerTag))
+  # A quest chapter is checked against the sources at the last commit of the chapter on its quest
+  # branch (found by the commit prefix "chapter-llm-1.1-"), local or on origin. Without such a
+  # commit (the branch is not there, or the chapter has no commits yet) the working tree is used.
+  $questRev = $null
+  if ($isQuest -and $status -ne $ST_NEW) {
+    $questName = 'quest/' + ($f.Directory.Name -replace '^quest-', '')
+    $chapterId = ($f.Name -replace '^((diffusion|llm|platform|paper)-\d+\.\d+)-.*$', '$1')
+    foreach ($ref in @($questName, "origin/$questName")) {
+      & git -C $repo rev-parse --verify --quiet "$ref^{commit}" 2>$null | Out-Null
+      if ($LASTEXITCODE -ne 0) { continue }
+      $hash = (& git -C $repo log $ref -E --grep ('^chapter-' + [regex]::Escape($chapterId) + '-') -n 1 --format=%H 2>$null)
+      if ($hash) { $questRev = "$hash".Trim(); break }
+    }
+  }
 
   # (b) finished chapters: sections 1..11 in order, no placeholder left
   if ($status -ne $ST_NEW) {
@@ -78,9 +92,10 @@ foreach ($f in $chapters) {
     $block = New-Object System.Collections.Generic.List[string]
     while ($j -lt $lines.Count -and -not $lines[$j].StartsWith('```')) { $block.Add($lines[$j]); $j++ }
     if ($j -ge $lines.Count) { Fail $rel "unterminated code fence after annotation for $srcRel"; continue }
-    if ($useTag) {
-      $shown = @(& git -C $repo show ("{0}:{1}" -f $headerTag, $srcRel) 2>$null)
-      if ($LASTEXITCODE -ne 0) { Fail $rel "annotated source file not found at tag ${headerTag}: $srcRel"; $i = $j; continue }
+    if ($useTag -or $questRev) {
+      $srcRev = if ($useTag) { $headerTag } else { $questRev }
+      $shown = @(& git -C $repo show ("{0}:{1}" -f $srcRev, $srcRel) 2>$null)
+      if ($LASTEXITCODE -ne 0) { Fail $rel "annotated source file not found at ${srcRev}: $srcRel"; $i = $j; continue }
       $srcLines = ($shown -join "`n").Split("`n")
     }
     else {
