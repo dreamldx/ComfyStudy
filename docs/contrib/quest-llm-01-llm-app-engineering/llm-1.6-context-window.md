@@ -2,7 +2,7 @@
 
 - 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/llm-01-llm-app-engineering`（支线不打 tag，用 `git log quest/llm-01-llm-app-engineering --grep="^chapter-llm-1.6"` 定位本章提交）
 - 所属支线：[支线 llm-01：LLM 应用工程](README.md)
-- 可开始于：主线 [1.5 Discord 机器人](../../tutorial/phase-01-llm-chat/1.5-discord-bot.md)
+- 可开始于：主线 [1.5 上下文规划与组装](../../tutorial/phase-01-llm-chat/1.5-context-assembly.md)
 - 一句话目标：估算 token 数，窗口放不下时用滑动窗口和摘要压缩旧对话，并保证工具调用与结果成对保留
 
 ## 1. 本章目标与成果

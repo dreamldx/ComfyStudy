@@ -2,8 +2,8 @@
 
 - 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/llm-01-llm-app-engineering`（支线不打 tag，用 `git log quest/llm-01-llm-app-engineering --grep="^chapter-llm-1.7"` 定位本章提交）
 - 所属支线：[支线 llm-01：LLM 应用工程](README.md)
-- 可开始于：主线 [1.5 Discord 机器人](../../tutorial/phase-01-llm-chat/1.5-discord-bot.md)
-- 一句话目标：读取响应里的用量字段，按频道统计费用（用量存进表后用 SQL 汇总，见主线 1.7；想试分析型数据库，可把同样的统计用 DuckDB 再做一遍作为练习）；让固定的系统提示与工具列表命中缓存并量化节省
+- 可开始于：主线 [1.5 上下文规划与组装](../../tutorial/phase-01-llm-chat/1.5-context-assembly.md)
+- 一句话目标：读取响应里的用量字段，按频道统计费用（用量存进表后用 SQL 汇总，见主线 1.8；想试分析型数据库，可把同样的统计用 DuckDB 再做一遍作为练习）；让固定的系统提示与工具列表命中缓存并量化节省
 
 ## 1. 本章目标与成果
 

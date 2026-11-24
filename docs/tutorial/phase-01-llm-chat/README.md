@@ -13,9 +13,10 @@
 | 1.2 | [LLM 双协议与 Provider 抽象](1.2-llm-providers.md) | `chapter-1.2-llm-providers` | 命令行对话接入两种协议，先读 ai-sdk-cpp 的设计再决定使用或自写 |
 | 1.3 | [Tool Calling 循环](1.3-tool-calling.md) | `chapter-1.3-tool-calling` | 用玩具工具跑通 agent 循环，对比 `tool_calls` 与 `tool_use` |
 | 1.4 | [Skill 机制：按需加载的能力](1.4-skills.md) | `chapter-1.4-skills` | 在 1.3 的循环上实现 Skill 目录、`load_skill`/`unload_skill` 与按会话动态工具集，用玩具 Skill 演示按需加载 |
-| 1.5 | [Discord 机器人](1.5-discord-bot.md) | `chapter-1.5-discord-bot` | 用 DPP 收发消息，每频道独立会话，串行任务队列 |
-| 1.6 | [LLM 视觉输入](1.6-vision-input.md) | `chapter-1.6-vision-input` | 支持图像输入：对比两种协议的图像消息格式（base64 与 URL）、大小限制，以及工具结果里能否带图（据我所知 OpenAI 的 tool 消息只能是文本，需改用后续 user 消息，需实测）；Discord 附件转为图像输入 |
-| 1.7 | [聊天历史持久化（SQLite）](1.7-chat-history.md) | `chapter-1.7-chat-history` | 用 vcpkg 引入 SQLite，写一层很薄的 RAII 封装（连接、预处理语句、绑定参数）；把每个频道的会话（文本、图片引用、工具调用、工具结果）存成表，图片只存路径；每轮对话结束后落盘，启动时读回，重启后接着聊 |
+| 1.5 | [上下文规划与组装](1.5-context-assembly.md) | `chapter-1.5-context-assembly` | 设计并实现上下文的组装：把系统提示词、历史对话、当前状态、最新用户信息按固定的顺序拼成发给模型的内容（与具体协议无关），再由 Provider 转成各自的格式；组装是一个纯函数，同样的输入得到逐字节相同的输出，并能打印每一部分占多少 token |
+| 1.6 | [Discord 机器人](1.6-discord-bot.md) | `chapter-1.6-discord-bot` | 用 DPP 收发消息，每频道独立会话，串行任务队列 |
+| 1.7 | [LLM 视觉输入](1.7-vision-input.md) | `chapter-1.7-vision-input` | 支持图像输入：对比两种协议的图像消息格式（base64 与 URL）、大小限制，以及工具结果里能否带图（据我所知 OpenAI 的 tool 消息只能是文本，需改用后续 user 消息，需实测）；Discord 附件转为图像输入 |
+| 1.8 | [聊天历史持久化（SQLite）](1.8-chat-history.md) | `chapter-1.8-chat-history` | 用 vcpkg 引入 SQLite，写一层很薄的 RAII 封装（连接、预处理语句、绑定参数）；把每个频道的会话（文本、图片引用、工具调用、工具结果）存成表，图片只存路径；每轮对话结束后落盘，启动时读回，重启后接着聊 |
 
 ## 阶段总览
 

@@ -2,7 +2,7 @@
 
 - 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/llm-02-agent-advanced`（支线不打 tag，用 `git log quest/llm-02-agent-advanced --grep="^chapter-llm-2.9"` 定位本章提交）
 - 所属支线：[支线 llm-02：Agent 进阶](README.md)
-- 可开始于：主线 [1.7 聊天历史持久化（SQLite）](../../tutorial/phase-01-llm-chat/1.7-chat-history.md)
+- 可开始于：主线 [1.8 聊天历史持久化（SQLite）](../../tutorial/phase-01-llm-chat/1.8-chat-history.md)
 - 一句话目标：用 SQLite 的 FTS5 搜聊天记录；中文分词是难点：试内置分词器的效果，再对比三字符分词或在应用层切词（到时核实各方案是否可用）；和 llm-2.2 的向量检索对比：关键词与语义各适合什么
 
 ## 1. 本章目标与成果

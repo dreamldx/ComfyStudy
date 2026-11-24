@@ -2,7 +2,7 @@
 
 - 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/llm-02-agent-advanced`（支线不打 tag，用 `git log quest/llm-02-agent-advanced --grep="^chapter-llm-2.3"` 定位本章提交）
 - 所属支线：[支线 llm-02：Agent 进阶](README.md)
-- 可开始于：主线 [1.5 Discord 机器人](../../tutorial/phase-01-llm-chat/1.5-discord-bot.md)
+- 可开始于：主线 [1.6 Discord 机器人](../../tutorial/phase-01-llm-chat/1.6-discord-bot.md)
 - 一句话目标：把“我喜欢水彩风格”这类偏好存下来，在后续对话里按相关性取出，并让用户能查看和删除
 
 ## 1. 本章目标与成果

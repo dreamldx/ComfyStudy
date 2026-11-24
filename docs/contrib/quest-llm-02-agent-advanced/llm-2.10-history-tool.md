@@ -2,7 +2,7 @@
 
 - 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/llm-02-agent-advanced`（支线不打 tag，用 `git log quest/llm-02-agent-advanced --grep="^chapter-llm-2.10"` 定位本章提交）
 - 所属支线：[支线 llm-02：Agent 进阶](README.md)
-- 可开始于：主线 [1.7 聊天历史持久化（SQLite）](../../tutorial/phase-01-llm-chat/1.7-chat-history.md)
+- 可开始于：主线 [1.8 聊天历史持久化（SQLite）](../../tutorial/phase-01-llm-chat/1.8-chat-history.md)
 - 一句话目标：提供只读的历史查询工具：参数化查询、只读连接、行数上限；记录里的内容当作数据而不是指令，防止历史里的提示注入；说明它与 llm-2.3 长期记忆的分工
 
 ## 1. 本章目标与成果
