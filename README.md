@@ -34,7 +34,7 @@
   - `tests/test_asio_basics.cpp`：19 个测试，需要控制时间的都用 `ManualSleeper`，用真实时钟的留了很宽的余量。
 - 文档：[platform-2.1 事件循环：Boost.Asio 的定时器与协程（Windows）](https://dreamldx.github.io/ComfyStudy/contrib/quest-platform-02-event-loop-network/platform-2.1-asio-basics/)
 
-### platform-2.2 libcurl 三种用法：在事件循环里的实现与对比（Windows）（进行中）
+### platform-2.2 libcurl 三种用法：在事件循环里的实现与对比（Windows）
 
 - 提交：`chapter-platform-2.2-curl-modes:`
 - 目的：机器人要一次问很多个问题，而主线 1.1 的 `http::Post` 一次只发一个请求、每次新建句柄。先把 libcurl 的 easy、multi、share 三种用法各做成可以单独测试的积木，再在后面的提交里并排比较。
@@ -49,5 +49,5 @@
   - `src/curl_support.h`：上面几个文件共用的 libcurl 辅助代码（原来在 `http_client.cpp` 里），内部使用。
   - `tests/test_async_http.cpp`：23 个测试，同一组测试（`TYPED_TEST`）跑遍三个客户端：答案、错误状态、20 个请求同时在途、一个请求失败不影响其他、超时只影响那一个、协程回到自己的线程；A 和 B 另有取消和“销毁客户端时还在途的请求”两个测试，C 有一个“取消要等当前请求结束”的测试。
   - Windows 上用事件循环等 libcurl 的套接字有一个坑：连接被拒绝不是“可写”，而是出现在 select 的异常集合里，不额外等 `wait_error` 的话，失败要等到 libcurl 自己的连接超时（默认 10 秒）才发现。
-  - `bench/curl_bench.cpp`（目标 `curl_bench`，不属于机器人程序）：在本机服务器（每个请求等 300 ms）和真实的模型服务上，比较顺序发送、线程池、`Share`、`Session` 和 multi 等发送方式的总耗时与新建连接数。用法：`curl_bench local N DELAY_MS THREADS REPS`、`curl_bench llm N THREADS any|1.1|2`（真实服务的地址和密钥从 `config.ini` 读，不会打印）。
+  - `bench/curl_bench.cpp`（目标 `curl_bench`，不属于机器人程序）：在本机服务器（每个请求等 300 ms）和真实的模型服务上，比较顺序发送、线程池、`Share`、`Session`、multi，以及三个协程客户端（`async C`、`async A`、`async B`）的总耗时和新建连接数。用法：`curl_bench local N DELAY_MS THREADS REPS`、`curl_bench llm N THREADS any|1.1|2 [--llm_provider anthropic]`（真实服务的地址和密钥从 `config.ini` 读，不会打印）。三个只读的探测：`curl_bench probe`（三家服务协商出的协议、并发流上限、`Alt-Svc`，不需要密钥）、`curl_bench idle`（连接空闲 5、30、90 秒后还在不在）、`curl_bench stream`（一个流式请求在 HTTP/2 下的到达情况）。
 - 文档：[platform-2.2 libcurl 三种用法：在事件循环里的实现与对比（Windows）](https://dreamldx.github.io/ComfyStudy/contrib/quest-platform-02-event-loop-network/platform-2.2-curl-modes/)

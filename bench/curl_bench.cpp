@@ -5,7 +5,16 @@
 //   curl_bench llm [N] [THREADS] [VERSION] [config options...]
 //       N short questions to the service that the settings (config file, environment) name.
 //       VERSION is any, 1.1 or 2.
+//   curl_bench probe
+//       What the three services say about HTTP/2: the protocol that was negotiated, the limit on
+//       concurrent streams, the Alt-Svc header. Needs no key (the requests are refused with 401).
+//   curl_bench idle
+//       Does a connection survive 5, 30 and 90 seconds of silence? One thread per service.
+//   curl_bench stream [config options...]
+//       One streaming question (Server-Sent Events) to the configured service, over HTTP/2.
+// The strategies named "async" are the three coroutine clients of src/async_http.h.
 #include <algorithm>
+#include <boost/asio.hpp>
 #include <atomic>
 #include <chrono>
 #include <cstdio>
@@ -13,6 +22,7 @@
 #include <filesystem>
 #include <functional>
 #include <iostream>
+#include <mutex>
 #include <memory>
 #include <optional>
 #include <string>
@@ -20,7 +30,9 @@
 #include <vector>
 
 #include <curl/curl.h>
+#include "json.h"
 
+#include "async_http.h"
 #include "config.h"
 #include "http_client.h"
 #include "llm_wire.h"
@@ -153,6 +165,23 @@ void PrintPhases(const Row& r, std::size_t how_many) {
 }
 
 // Runs every strategy `reps` times and keeps the run with the median total time.
+// Sends every request at the same time from coroutines on one io_context and waits for all the answers.
+// (The clients with a pool of threads still run only as many as they have threads.)
+template <typename Client>
+Results Async(Client& client, boost::asio::io_context& io, const std::vector<http::PostRequest>& requests) {
+  Results results(requests.size());
+  auto job = [&](std::size_t i) -> boost::asio::awaitable<void> {
+    try {
+      results[i] = co_await client.Post(requests[i]);
+    } catch (const std::exception&) {
+    }
+  };
+  for (std::size_t i = 0; i < requests.size(); ++i) boost::asio::co_spawn(io, job(i), boost::asio::detached);
+  io.restart();
+  io.run();
+  return results;
+}
+
 std::vector<Row> RunAll(const std::vector<http::PostRequest>& requests, std::size_t threads,
                         const http::Options& options, int reps) {
   struct Strategy {
@@ -168,12 +197,39 @@ std::vector<Row> RunAll(const std::vector<http::PostRequest>& requests, std::siz
       {"pool, a Session per thread", threads, [&] { return Pool(requests, threads, PoolMode::kSessionPerThread, options); }},
       {"multi, all in flight", 1, [&] { return Multi(requests, requests.size(), options); }},
       {"multi, " + std::to_string(threads) + " in flight", 1, [&] { return Multi(requests, threads, options); }},
+      // The thread counts include the thread that runs the event loop.
+      {"async C: pool of Sessions", threads + 1, [&] {
+         boost::asio::io_context io;
+         http::PoolClient client(threads, options);
+         return Async(client, io, requests);
+       }},
+      {"async A: one curl thread", 2, [&] {
+         boost::asio::io_context io;
+         http::CurlThreadClient client(options);
+         return Async(client, io, requests);
+       }},
+      {"async B: socket_action", 1, [&] {
+         boost::asio::io_context io;
+         http::SocketClient client(io.get_executor(), options);
+         return Async(client, io, requests);
+       }},
   };
   std::vector<Row> rows;
-  const auto only = config::Get("BENCH_ONLY");  // run just one strategy (for debugging)
+  const auto only = config::Get("BENCH_ONLY");  // run just some strategies, by number: "4,5,9"
+  auto wanted = [&](std::size_t index) {
+    if (!only) return true;
+    for (std::size_t from = 0; from <= only->size();) {
+      const std::size_t comma = only->find(',', from);
+      const std::string item = only->substr(from, comma == std::string::npos ? std::string::npos : comma - from);
+      if (!item.empty() && std::stoul(item) == index) return true;
+      if (comma == std::string::npos) break;
+      from = comma + 1;
+    }
+    return false;
+  };
   for (std::size_t index = 0; index < strategies.size(); ++index) {
     const Strategy& s = strategies[index];
-    if (only && std::stoul(*only) != index) continue;
+    if (!wanted(index)) continue;
     std::vector<Row> runs;
     for (int i = 0; i < reps; ++i) runs.push_back(Measure(s.name, s.threads, s.run));
     std::sort(runs.begin(), runs.end(), [](const Row& a, const Row& b) { return a.wall_ms < b.wall_ms; });
@@ -254,17 +310,179 @@ int Llm(const std::vector<std::string>& args) {
   return 0;
 }
 
+// --- what the services say about HTTP/2 -----------------------------------------------------------------
+
+const char* const kServices[][2] = {
+    {"api.openai.com", "https://api.openai.com/v1/chat/completions"},
+    {"api.anthropic.com", "https://api.anthropic.com/v1/messages"},
+    {"openrouter.ai", "https://openrouter.ai/api/v1/chat/completions"},
+};
+
+struct ProbeText {
+  std::vector<std::string> lines;
+};
+
+int ProbeDebug(CURL*, curl_infotype type, char* data, size_t size, void* user) {
+  if (type != CURLINFO_TEXT) return 0;
+  std::string line(data, size);
+  while (!line.empty() && (line.back() == '\n' || line.back() == '\r')) line.pop_back();
+  for (const char* wanted : {"ALPN", "CONCURRENT", "MAX_", "GOAWAY", "multiplex"}) {
+    if (line.find(wanted) != std::string::npos) {
+      static_cast<ProbeText*>(user)->lines.push_back(line);
+      break;
+    }
+  }
+  return 0;
+}
+
+std::size_t ProbeHeader(char* data, std::size_t size, std::size_t count, void* user) {
+  std::string line(data, size * count);
+  std::string lower = line;
+  std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+  if (lower.rfind("alt-svc:", 0) == 0 || lower.rfind("server:", 0) == 0) {
+    while (!line.empty() && (line.back() == '\n' || line.back() == '\r')) line.pop_back();
+    static_cast<ProbeText*>(user)->lines.push_back(line);
+  }
+  return size * count;
+}
+
+std::size_t Ignore(char*, std::size_t size, std::size_t count, void*) { return size * count; }
+
+int Probe() {
+  curl_global_trace("http/2");  // makes libcurl log what the server says in its SETTINGS frame
+  for (const auto& service : kServices) {
+    ProbeText text;
+    CURL* easy = curl_easy_init();
+    curl_slist* headers = curl_slist_append(nullptr, "Content-Type: application/json");
+    curl_easy_setopt(easy, CURLOPT_URL, service[1]);
+    curl_easy_setopt(easy, CURLOPT_POSTFIELDS, "{}");
+    curl_easy_setopt(easy, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(easy, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2TLS);
+    curl_easy_setopt(easy, CURLOPT_VERBOSE, 1L);
+    curl_easy_setopt(easy, CURLOPT_DEBUGFUNCTION, ProbeDebug);
+    curl_easy_setopt(easy, CURLOPT_DEBUGDATA, &text);
+    curl_easy_setopt(easy, CURLOPT_HEADERFUNCTION, ProbeHeader);
+    curl_easy_setopt(easy, CURLOPT_HEADERDATA, &text);
+    curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, Ignore);
+    curl_easy_setopt(easy, CURLOPT_TIMEOUT_MS, 15000L);
+    const CURLcode code = curl_easy_perform(easy);
+    long status = 0, version = 0;
+    curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &status);
+    curl_easy_getinfo(easy, CURLINFO_HTTP_VERSION, &version);
+    std::printf("%s: %s, HTTP version code %ld (3 = HTTP/2), status %ld\n", service[0], code == CURLE_OK ? "ok" : curl_easy_strerror(code), version, status);
+    for (const std::string& line : text.lines) std::printf("    %s\n", line.c_str());
+    curl_slist_free_all(headers);
+    curl_easy_cleanup(easy);
+  }
+  return 0;
+}
+
+int Idle() {
+  std::mutex out;
+  std::vector<std::thread> threads;
+  for (const auto& service : kServices) {
+    threads.emplace_back([&out, url = std::string(service[1]), name = std::string(service[0])] {
+      http::Session session;
+      std::string line = name + ":";
+      for (const int pause : {0, 5, 30, 90}) {
+        std::this_thread::sleep_for(std::chrono::seconds(pause));
+        try {
+          const http::Response r = session.Post(url, {{"Content-Type", "application/json"}}, "{}");
+          line += " after " + std::to_string(pause) + " s: " + (r.timing.new_connections ? "new connection" : "same connection") + " (" + r.timing.protocol + ");";
+        } catch (const std::exception& e) {
+          line += " after " + std::to_string(pause) + " s: " + e.what() + ";";
+        }
+      }
+      const std::lock_guard<std::mutex> lock(out);
+      std::printf("%s\n", line.c_str());
+    });
+  }
+  for (auto& t : threads) t.join();
+  return 0;
+}
+
+struct StreamStats {
+  std::size_t chunks = 0;
+  std::size_t bytes = 0;
+  Clock::time_point first{};
+  Clock::time_point last{};
+};
+
+std::size_t StreamWrite(char*, std::size_t size, std::size_t count, void* user) {
+  auto* stats = static_cast<StreamStats*>(user);
+  const auto now = Clock::now();
+  if (stats->chunks == 0) stats->first = now;
+  stats->last = now;
+  ++stats->chunks;
+  stats->bytes += size * count;
+  return size * count;
+}
+
+int Stream(const std::vector<std::string>& args) {
+  const auto candidates = config::ConfigCandidates(config::ExeDirectory(), std::filesystem::current_path());
+  const options::Result parsed = options::Parse(args, candidates, std::cout, std::cerr);
+  if (parsed.exit_code) return *parsed.exit_code;
+  const config::Values& s = parsed.options.values;
+  const bool anthropic = s.at("llm_provider") == "anthropic";
+  llm::Request question;
+  question.max_tokens = 200;
+  question.prompt = "Count from 1 to 20, one number per line.";
+  llm::HttpRequest r;
+  if (anthropic) {
+    question.model = s.at("anthropic_model");
+    r = llm::anthropic::BuildRequest({s.at("anthropic_base_url"), s.at("anthropic_api_key")}, question);
+  } else {
+    question.model = s.at("openai_model");
+    r = llm::openai_chat::BuildRequest({s.at("openai_base_url"), s.at("openai_api_key")}, question);
+  }
+  json::Value body = json::Parse(r.body);
+  body["stream"] = true;
+  const std::string text = json::Dump(body);
+
+  StreamStats stats;
+  CURL* easy = curl_easy_init();
+  curl_slist* headers = nullptr;
+  for (const auto& h : r.headers) headers = curl_slist_append(headers, (h.first + ": " + h.second).c_str());
+  curl_easy_setopt(easy, CURLOPT_URL, r.url.c_str());
+  curl_easy_setopt(easy, CURLOPT_POSTFIELDS, text.c_str());
+  curl_easy_setopt(easy, CURLOPT_HTTPHEADER, headers);
+  curl_easy_setopt(easy, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2TLS);
+  curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, StreamWrite);
+  curl_easy_setopt(easy, CURLOPT_WRITEDATA, &stats);
+  curl_easy_setopt(easy, CURLOPT_TIMEOUT_MS, 60000L);
+  const auto start = Clock::now();
+  const CURLcode code = curl_easy_perform(easy);
+  long status = 0, version = 0;
+  char* type = nullptr;
+  curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &status);
+  curl_easy_getinfo(easy, CURLINFO_HTTP_VERSION, &version);
+  curl_easy_getinfo(easy, CURLINFO_CONTENT_TYPE, &type);
+  auto ms = [&](Clock::time_point t) { return std::chrono::duration<double, std::milli>(t - start).count(); };
+  std::printf("%s: %s, HTTP version code %ld (3 = HTTP/2), status %ld, content-type %s\n", s.at("llm_provider").c_str(),
+              code == CURLE_OK ? "ok" : curl_easy_strerror(code), version, status, type ? type : "?");
+  std::printf("%zu pieces of data, %zu bytes; the first arrived after %.0f ms, the last after %.0f ms\n", stats.chunks, stats.bytes,
+              stats.chunks ? ms(stats.first) : 0.0, stats.chunks ? ms(stats.last) : 0.0);
+  curl_slist_free_all(headers);
+  curl_easy_cleanup(easy);
+  return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
   std::setvbuf(stdout, nullptr, _IONBF, 0);  // keep the lines that were printed before a crash
   const std::vector<std::string> args(argv + 1, argv + argc);
-  if (args.empty() || (args[0] != "local" && args[0] != "llm")) {
-    std::fprintf(stderr, "usage: curl_bench local [N] [DELAY_MS] [THREADS] [REPS]\n       curl_bench llm [N] [THREADS] [any|1.1|2] [options]\n");
+  if (args.empty() || (args[0] != "local" && args[0] != "llm" && args[0] != "probe" && args[0] != "idle" && args[0] != "stream")) {
+    std::fprintf(stderr,
+                 "usage: curl_bench local [N] [DELAY_MS] [THREADS] [REPS]\n       curl_bench llm [N] [THREADS] [any|1.1|2] [options]\n"
+                 "       curl_bench probe | idle | stream [options]\n");
     return 2;
   }
   const std::vector<std::string> rest(args.begin() + 1, args.end());
   try {
+    if (args[0] == "probe") return Probe();
+    if (args[0] == "idle") return Idle();
+    if (args[0] == "stream") return Stream(rest);
     return args[0] == "local" ? Local(rest) : Llm(rest);
   } catch (const std::exception& e) {
     std::fprintf(stderr, "error: %s\n", e.what());
