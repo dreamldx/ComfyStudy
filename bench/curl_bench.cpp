@@ -12,6 +12,9 @@
 //       Does a connection survive 5, 30 and 90 seconds of silence? One thread per service.
 //   curl_bench stream [config options...]
 //       One streaming question (Server-Sent Events) to the configured service, over HTTP/2.
+//   curl_bench mux [N1,N2,...] [config options...]
+//       Does HTTP/2 multiplexing work, and how far? For each N (default 12,50,100) sends N questions
+//       at the same time through one CurlThreadClient, over HTTP/1.1 and over HTTP/2.
 // The strategies named "async" are the three coroutine clients of src/async_http.h.
 #include <algorithm>
 #include <boost/asio.hpp>
@@ -467,15 +470,136 @@ int Stream(const std::vector<std::string>& args) {
   return 0;
 }
 
+// --- HTTP/2 multiplexing on a real service --------------------------------------------------------------
+
+std::vector<http::PostRequest> Questions(const config::Values& s, std::size_t n) {
+  llm::Request question;
+  question.max_tokens = 16;
+  std::vector<http::PostRequest> requests;
+  for (std::size_t i = 0; i < n; ++i) {
+    question.prompt = "Reply with only the number " + std::to_string(i) + ".";
+    llm::HttpRequest r;
+    if (s.at("llm_provider") == "anthropic") {
+      question.model = s.at("anthropic_model");
+      r = llm::anthropic::BuildRequest({s.at("anthropic_base_url"), s.at("anthropic_api_key")}, question);
+    } else {
+      question.model = s.at("openai_model");
+      r = llm::openai_chat::BuildRequest({s.at("openai_base_url"), s.at("openai_api_key")}, question);
+    }
+    requests.push_back({r.url, r.headers, r.body});
+  }
+  return requests;
+}
+
+struct MuxRun {
+  double wall_ms = 0;
+  long connections = 0;           // new connections the requests made
+  std::size_t max_overlap = 0;    // the most requests that were waiting for an answer at the same time
+  std::size_t ok = 0;             // status 200
+  std::size_t throttled = 0;      // status 429: the service said "too many requests"
+  std::size_t failed = 0;         // another status, or no answer
+  double p50_ms = 0;
+  double p95_ms = 0;
+};
+
+MuxRun RunMux(const std::vector<http::PostRequest>& requests, http::Version version) {
+  struct Span {
+    double start = 0;
+    double end = 0;
+    long status = 0;
+    long connections = 0;
+  };
+  boost::asio::io_context io;
+  http::Options options;
+  options.version = version;
+  http::CurlThreadClient client(options);
+  std::vector<Span> spans(requests.size());
+  const auto t0 = Clock::now();
+  auto since = [&](Clock::time_point t) { return std::chrono::duration<double, std::milli>(t - t0).count(); };
+  auto job = [&](std::size_t i) -> boost::asio::awaitable<void> {
+    spans[i].start = since(Clock::now());
+    try {
+      const http::Response r = co_await client.Post(requests[i]);
+      spans[i].status = r.status;
+      spans[i].connections = r.timing.new_connections;
+    } catch (const std::exception&) {
+    }
+    spans[i].end = since(Clock::now());
+  };
+  for (std::size_t i = 0; i < requests.size(); ++i) boost::asio::co_spawn(io, job(i), boost::asio::detached);
+  io.run();
+
+  MuxRun run;
+  run.wall_ms = since(Clock::now());
+  std::vector<double> durations;
+  std::vector<std::pair<double, int>> events;  // (time, +1 for a request that starts, -1 for one that ends)
+  for (const Span& span : spans) {
+    run.connections += span.connections;
+    if (span.status == 200) ++run.ok;
+    else if (span.status == 429) ++run.throttled;
+    else ++run.failed;
+    durations.push_back(span.end - span.start);
+    events.push_back({span.start, +1});
+    events.push_back({span.end, -1});
+  }
+  std::sort(durations.begin(), durations.end());
+  run.p50_ms = durations[durations.size() / 2];
+  run.p95_ms = durations[(durations.size() * 95) / 100 < durations.size() ? (durations.size() * 95) / 100 : durations.size() - 1];
+  std::sort(events.begin(), events.end());  // at the same time an end (-1) comes before a start (+1)
+  int now = 0;
+  for (const auto& event : events) {
+    now += event.second;
+    run.max_overlap = (std::max)(run.max_overlap, static_cast<std::size_t>(now));
+  }
+  return run;
+}
+
+int Mux(const std::vector<std::string>& args) {
+  std::vector<std::size_t> counts = {12, 50, 100};
+  std::vector<std::string> rest = args;
+  if (!rest.empty() && rest[0].rfind("--", 0) != 0) {
+    counts.clear();
+    std::string list = rest[0];
+    for (std::size_t from = 0; from <= list.size();) {
+      const std::size_t comma = list.find(',', from);
+      counts.push_back(std::stoul(list.substr(from, comma == std::string::npos ? std::string::npos : comma - from)));
+      if (comma == std::string::npos) break;
+      from = comma + 1;
+    }
+    rest.erase(rest.begin());
+  }
+  const auto candidates = config::ConfigCandidates(config::ExeDirectory(), std::filesystem::current_path());
+  const options::Result parsed = options::Parse(rest, candidates, std::cout, std::cerr);
+  if (parsed.exit_code) return *parsed.exit_code;
+  const config::Values& s = parsed.options.values;
+  const auto reps_setting = config::Get("BENCH_REPS");
+  const int reps = reps_setting ? std::stoi(*reps_setting) : 3;
+
+  std::printf("%s, one CurlThreadClient, median of %d runs\n\n", s.at("llm_provider").c_str(), reps);
+  std::printf("%5s %-9s %9s %6s %8s %5s %5s %5s %8s %8s\n", "N", "version", "total ms", "conns", "overlap", "ok", "429", "fail", "p50 ms", "p95 ms");
+  for (const std::size_t n : counts) {
+    const std::vector<http::PostRequest> requests = Questions(s, n);
+    for (const http::Version version : {http::Version::kHttp1_1, http::Version::kHttp2}) {
+      std::vector<MuxRun> runs;
+      for (int i = 0; i < reps; ++i) runs.push_back(RunMux(requests, version));
+      std::sort(runs.begin(), runs.end(), [](const MuxRun& a, const MuxRun& b) { return a.wall_ms < b.wall_ms; });
+      const MuxRun& r = runs[runs.size() / 2];
+      std::printf("%5zu %-9s %9.0f %6ld %8zu %5zu %5zu %5zu %8.0f %8.0f\n", n, version == http::Version::kHttp2 ? "HTTP/2" : "HTTP/1.1", r.wall_ms,
+                  r.connections, r.max_overlap, r.ok, r.throttled, r.failed, r.p50_ms, r.p95_ms);
+    }
+  }
+  return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
   std::setvbuf(stdout, nullptr, _IONBF, 0);  // keep the lines that were printed before a crash
   const std::vector<std::string> args(argv + 1, argv + argc);
-  if (args.empty() || (args[0] != "local" && args[0] != "llm" && args[0] != "probe" && args[0] != "idle" && args[0] != "stream")) {
+  if (args.empty() || (args[0] != "local" && args[0] != "llm" && args[0] != "probe" && args[0] != "idle" && args[0] != "stream" && args[0] != "mux")) {
     std::fprintf(stderr,
                  "usage: curl_bench local [N] [DELAY_MS] [THREADS] [REPS]\n       curl_bench llm [N] [THREADS] [any|1.1|2] [options]\n"
-                 "       curl_bench probe | idle | stream [options]\n");
+                 "       curl_bench probe | idle | stream [options]\n       curl_bench mux [N1,N2,...] [options]\n");
     return 2;
   }
   const std::vector<std::string> rest(args.begin() + 1, args.end());
@@ -483,6 +607,7 @@ int main(int argc, char** argv) {
     if (args[0] == "probe") return Probe();
     if (args[0] == "idle") return Idle();
     if (args[0] == "stream") return Stream(rest);
+    if (args[0] == "mux") return Mux(rest);
     return args[0] == "local" ? Local(rest) : Llm(rest);
   } catch (const std::exception& e) {
     std::fprintf(stderr, "error: %s\n", e.what());
