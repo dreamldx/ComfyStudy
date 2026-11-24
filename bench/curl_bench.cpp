@@ -201,17 +201,17 @@ std::vector<Row> RunAll(const std::vector<http::PostRequest>& requests, std::siz
       {"multi, all in flight", 1, [&] { return Multi(requests, requests.size(), options); }},
       {"multi, " + std::to_string(threads) + " in flight", 1, [&] { return Multi(requests, threads, options); }},
       // The thread counts include the thread that runs the event loop.
-      {"async C: pool of Sessions", threads + 1, [&] {
+      {"async, thread pool + Session", threads + 1, [&] {
          boost::asio::io_context io;
          http::PoolClient client(threads, options);
          return Async(client, io, requests);
        }},
-      {"async A: one curl thread", 2, [&] {
+      {"async, one curl thread", 2, [&] {
          boost::asio::io_context io;
          http::CurlThreadClient client(options);
          return Async(client, io, requests);
        }},
-      {"async B: socket_action", 1, [&] {
+      {"async, socket_action", 1, [&] {
          boost::asio::io_context io;
          http::SocketClient client(io.get_executor(), options);
          return Async(client, io, requests);
