@@ -33,3 +33,16 @@
     例如 `build\windows-debug\bin\asio_demo.exe concurrent 20 300` 在一个线程里同时等 20 个 300 ms，总共约 300 ms。
   - `tests/test_asio_basics.cpp`：19 个测试，需要控制时间的都用 `ManualSleeper`，用真实时钟的留了很宽的余量。
 - 文档：[platform-2.1 事件循环：Boost.Asio 的定时器与协程（Windows）](https://dreamldx.github.io/ComfyStudy/contrib/quest-platform-02-event-loop-network/platform-2.1-asio-basics/)
+
+### platform-2.2 libcurl 三种用法：在事件循环里的实现与对比（Windows）（进行中）
+
+- 提交：`chapter-platform-2.2-curl-modes:`
+- 目的：机器人要一次问很多个问题，而主线 1.1 的 `http::Post` 一次只发一个请求、每次新建句柄。先把 libcurl 的 easy、multi、share 三种用法各做成可以单独测试的积木，再在后面的提交里并排比较。
+- 说明：
+  - 每个请求各阶段的耗时（`Timing`：域名解析、建立连接、TLS 握手、首字节、总耗时，以及有没有新建连接）。
+  - `http::Session`：保留一个句柄，连续请求时复用连接（easy）。
+  - `http::PostMany`：在一个线程里同时发出多个请求（multi），可以限制同时在途的数量。
+  - `http::Share`：让多个线程的句柄共享 DNS 缓存和 TLS 会话（share；不共享连接缓存，共享连接缓存时 libcurl 会崩）。
+  - vcpkg 的 `curl[http2]`，以及 `Options::version` 可以强制 HTTP/1.1 或 HTTP/2。
+  - `tests/test_http_modes.cpp`：9 个测试，本机用 cpp-httplib 起一个小服务器。
+- 文档：[platform-2.2 libcurl 三种用法：在事件循环里的实现与对比（Windows）](https://dreamldx.github.io/ComfyStudy/contrib/quest-platform-02-event-loop-network/platform-2.2-curl-modes/)

@@ -16,9 +16,11 @@ add_comfystudy_test(test_options)
 add_comfystudy_test(test_config)
 add_comfystudy_test(test_llm_wire)
 add_comfystudy_test(test_transport)
+add_comfystudy_test(test_http_modes)
 add_comfystudy_test(test_llm_client)
-# These two start a small HTTP server on the loopback interface.
+# These start a small HTTP server on the loopback interface.
 target_link_libraries(test_transport PRIVATE httplib::httplib)
+target_link_libraries(test_http_modes PRIVATE httplib::httplib)
 target_link_libraries(test_llm_client PRIVATE httplib::httplib)
 add_comfystudy_test(test_asio_basics)
 target_link_libraries(test_asio_basics PRIVATE comfystudy_asio)
