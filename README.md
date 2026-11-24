@@ -37,7 +37,7 @@
 ### platform-2.2 libcurl 三种用法：在事件循环里的实现与对比（Windows）
 
 - 提交：`chapter-platform-2.2-curl-modes:`
-- 目的：机器人要一次问很多个问题，而主线 1.1 的 `http::Post` 一次只发一个请求、每次新建句柄。先把 libcurl 的 easy、multi、share 三种用法各做成可以单独测试的积木，再在后面的提交里并排比较。
+- 目的：机器人要一次问很多个问题。这一章先把 libcurl 的 easy、multi、share 三种用法各做成可以单独测试的积木，再在后面的提交里并排比较。主线 1.1 的 `http::Transport` 采用的就是比较出来的结论：一个线程跑 libcurl 的 multi 接口。
 - 说明：
   - 每个请求各阶段的耗时（`Timing`：域名解析、建立连接、TLS 握手、首字节、总耗时，以及有没有新建连接）。
   - `http::Session`：保留一个句柄，连续请求时复用连接（easy）。
