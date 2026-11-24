@@ -2,11 +2,16 @@
   "name": "comfystudy",
   "version-string": "0.0.0",
   "dependencies": [
-    "nlohmann-json",
-    "curl",
+    "glaze",
+    {
+      "name": "curl",
+      "features": [ "http2" ]
+    },
     "gtest",
     "spdlog",
-    "cli11"
+    "cli11",
+    "cpp-httplib",
+    "boost-asio"
   ],
   "builtin-baseline": "93ad765c7b66ab9ce97469ec23a90b15c3a14ee5"
 }

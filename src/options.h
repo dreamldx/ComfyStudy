@@ -13,6 +13,8 @@ namespace options {
 struct Options {
   config::Values values;                          // every known key, resolved (see Parse)
   bool verbose = false;                           // -v / --verbose
+  std::string prompt;                             // --prompt: ask the model one question and exit
+  std::string system;                             // --system: an instruction that goes with it
 #if defined(_WIN32)
   bool dependency_check = false;                  // --dependency-check (Windows only)
 #endif
@@ -34,7 +36,7 @@ struct Result {
 // `args` are the command-line arguments after the program name. The config file is the one given
 // with --config; without it, the first existing file in `config_candidates` (no merging). It may
 // be written as INI or as TOML (a flat list of "name = value" lines). A setting has the same
-// name in the file and on the command line: "llm_model = x" is "--llm_model x".
+// name in the file and on the command line: "openai_model = x" is "--openai_model x".
 Result Parse(const std::vector<std::string>& args,
              const std::vector<std::filesystem::path>& config_candidates, std::ostream& out,
              std::ostream& err);

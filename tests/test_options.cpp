@@ -72,7 +72,7 @@ TEST_F(OptionsTest, NothingGivenMeansTheDefaults) {
   EXPECT_FALSE(result.exit_code.has_value());
   EXPECT_EQ(result.options.values.at("llm_provider"), "openai");
   EXPECT_EQ(result.options.values.at("model_dir"), "models");
-  EXPECT_EQ(result.options.values.at("llm_model"), "");
+  EXPECT_EQ(result.options.values.at("openai_model"), "");
   EXPECT_FALSE(result.options.config_file.has_value());
   EXPECT_FALSE(result.options.verbose);
 #if defined(_WIN32)
@@ -90,75 +90,75 @@ TEST_F(OptionsTest, EnvironmentBeatsTheDefault) {
 }
 
 TEST_F(OptionsTest, ConfigFileBeatsTheEnvironment) {
-  SetEnv("LLM_MODEL", "from-env");
-  TempFile file("llm_model = from-file\n", ".ini");
-  EXPECT_EQ(Run({"--config", file.str()}).options.values.at("llm_model"), "from-file");
+  SetEnv("OPENAI_MODEL", "from-env");
+  TempFile file("openai_model = from-file\n", ".ini");
+  EXPECT_EQ(Run({"--config", file.str()}).options.values.at("openai_model"), "from-file");
 }
 
 TEST_F(OptionsTest, CommandLineBeatsTheConfigFile) {
-  TempFile file("llm_model = from-file\n", ".ini");
-  const auto result = Run({"--config", file.str(), "--llm_model", "from-cli"});
-  EXPECT_EQ(result.options.values.at("llm_model"), "from-cli");
+  TempFile file("openai_model = from-file\n", ".ini");
+  const auto result = Run({"--config", file.str(), "--openai_model", "from-cli"});
+  EXPECT_EQ(result.options.values.at("openai_model"), "from-cli");
 }
 
 TEST_F(OptionsTest, CommandLineBeatsEverything) {
-  SetEnv("LLM_MODEL", "from-env");
-  TempFile file("llm_model = from-file\n", ".toml");
-  const auto result = Run({"--llm_model", "from-cli", "--config", file.str()});
-  EXPECT_EQ(result.options.values.at("llm_model"), "from-cli");
+  SetEnv("OPENAI_MODEL", "from-env");
+  TempFile file("openai_model = from-file\n", ".toml");
+  const auto result = Run({"--openai_model", "from-cli", "--config", file.str()});
+  EXPECT_EQ(result.options.values.at("openai_model"), "from-cli");
 }
 
 TEST_F(OptionsTest, EachSettingIsResolvedOnItsOwn) {
   SetEnv("LLM_PROVIDER", "anthropic");
   SetEnv("MODEL_DIR", "from-env");
-  TempFile file("llm_model = from-file\nmodel_dir = from-file\n", ".ini");
+  TempFile file("openai_model = from-file\nmodel_dir = from-file\n", ".ini");
   const auto result = Run({"--config", file.str(), "--llm_provider", "cli"});
   EXPECT_EQ(result.options.values.at("llm_provider"), "cli");        // command line
   EXPECT_EQ(result.options.values.at("model_dir"), "from-file");     // config file beats env
-  EXPECT_EQ(result.options.values.at("llm_model"), "from-file");     // config file
+  EXPECT_EQ(result.options.values.at("openai_model"), "from-file");     // config file
   EXPECT_EQ(result.options.values.at("openai_base_url"), "https://api.openai.com/v1");  // default
 }
 
 TEST_F(OptionsTest, AnEmptyValueInTheFileDoesNotHideTheEnvironment) {
   SetEnv("DISCORD_TOKEN", "token-from-env");
-  TempFile file("discord_token =\nllm_model = \"\"\n", ".ini");
+  TempFile file("discord_token =\nopenai_model = \"\"\n", ".ini");
   EXPECT_EQ(Run({"--config", file.str()}).options.values.at("discord_token"), "token-from-env");
 }
 
 TEST_F(OptionsTest, ReadsIni) {
   TempFile file(
-      "# a comment\n; another comment\nllm_model = gpt-4o # trailing comment\n"
+      "# a comment\n; another comment\nopenai_model = gpt-4o # trailing comment\n"
       "openai_base_url = http://localhost:8080/v1?a=b\n",
       ".ini");
   const auto result = Run({"--config", file.str()});
   EXPECT_FALSE(result.exit_code.has_value());
-  EXPECT_EQ(result.options.values.at("llm_model"), "gpt-4o");
+  EXPECT_EQ(result.options.values.at("openai_model"), "gpt-4o");
   EXPECT_EQ(result.options.values.at("openai_base_url"), "http://localhost:8080/v1?a=b");
   EXPECT_EQ(result.options.config_file, file.path());
 }
 
 TEST_F(OptionsTest, ReadsToml) {
   TempFile file(
-      "# a comment\nllm_model = \"gpt-4o\"  # trailing comment\n"
+      "# a comment\nopenai_model = \"gpt-4o\"  # trailing comment\n"
       "llm_provider = 'anthropic'\n",
       ".toml");
   const auto result = Run({"--config", file.str()});
   EXPECT_FALSE(result.exit_code.has_value());
-  EXPECT_EQ(result.options.values.at("llm_model"), "gpt-4o");
+  EXPECT_EQ(result.options.values.at("openai_model"), "gpt-4o");
   EXPECT_EQ(result.options.values.at("llm_provider"), "anthropic");
 }
 
 TEST_F(OptionsTest, FileSavedByAWindowsEditor) {
-  TempFile file("\xEF\xBB\xBF" "llm_model = bom\r\nmodel_dir = crlf\r\n", ".ini");
+  TempFile file("\xEF\xBB\xBF" "openai_model = bom\r\nmodel_dir = crlf\r\n", ".ini");
   const auto result = Run({"--config", file.str()});
   EXPECT_FALSE(result.exit_code.has_value());
-  EXPECT_EQ(result.options.values.at("llm_model"), "bom");
+  EXPECT_EQ(result.options.values.at("openai_model"), "bom");
   EXPECT_EQ(result.options.values.at("model_dir"), "crlf");
 }
 
 TEST_F(OptionsTest, ARepeatedKeyTakesTheLastValue) {
-  TempFile file("llm_model = first\nllm_model = second\n", ".ini");
-  EXPECT_EQ(Run({"--config", file.str()}).options.values.at("llm_model"), "second");
+  TempFile file("openai_model = first\nopenai_model = second\n", ".ini");
+  EXPECT_EQ(Run({"--config", file.str()}).options.values.at("openai_model"), "second");
 }
 
 TEST_F(OptionsTest, AMisspelledKeyInTheFileIsAnError) {
@@ -170,7 +170,7 @@ TEST_F(OptionsTest, AMisspelledKeyInTheFileIsAnError) {
 }
 
 TEST_F(OptionsTest, ALineWithoutEqualsIsAnError) {
-  TempFile file("llm_model = x\njunk\n", ".ini");
+  TempFile file("openai_model = x\njunk\n", ".ini");
   const auto result = Run({"--config", file.str()});
   ASSERT_TRUE(result.exit_code.has_value());
   EXPECT_NE(*result.exit_code, 0);
@@ -184,21 +184,21 @@ TEST_F(OptionsTest, AMissingExplicitConfigFileIsAnError) {
 }
 
 TEST_F(OptionsTest, WithoutConfigTheFirstExistingCandidateIsUsed) {
-  TempFile first("llm_model = first\nmodel_dir = only-in-first\n", ".toml");
-  TempFile second("llm_model = second\nllm_provider = only-in-second\n", ".ini");
+  TempFile first("openai_model = first\nmodel_dir = only-in-first\n", ".toml");
+  TempFile second("openai_model = second\nllm_provider = only-in-second\n", ".ini");
   const std::filesystem::path missing = "no_such_file.toml";
   const auto result = Run({}, {missing, first.path(), second.path()});
   EXPECT_EQ(result.options.config_file, first.path());
-  EXPECT_EQ(result.options.values.at("llm_model"), "first");
+  EXPECT_EQ(result.options.values.at("openai_model"), "first");
   EXPECT_EQ(result.options.values.at("model_dir"), "only-in-first");
   EXPECT_EQ(result.options.values.at("llm_provider"), "openai");  // not merged from the second
 }
 
 TEST_F(OptionsTest, ExplicitConfigWinsOverTheCandidates) {
-  TempFile candidate("llm_model = candidate\n", ".ini");
-  TempFile explicit_file("llm_model = explicit\n", ".ini");
+  TempFile candidate("openai_model = candidate\n", ".ini");
+  TempFile explicit_file("openai_model = explicit\n", ".ini");
   const auto result = Run({"--config", explicit_file.str()}, {candidate.path()});
-  EXPECT_EQ(result.options.values.at("llm_model"), "explicit");
+  EXPECT_EQ(result.options.values.at("openai_model"), "explicit");
   EXPECT_EQ(result.options.config_file, explicit_file.path());
 }
 
@@ -224,9 +224,9 @@ TEST_F(OptionsTest, HelpListsTheOptionsAndStopsWithExitCodeZero) {
   const auto result = Run({"--help"});
   ASSERT_TRUE(result.exit_code.has_value());
   EXPECT_EQ(*result.exit_code, 0);
-  EXPECT_NE(out_.str().find("--llm_model"), std::string::npos);
+  EXPECT_NE(out_.str().find("--openai_model"), std::string::npos);
   EXPECT_NE(out_.str().find("--config"), std::string::npos);
-  EXPECT_NE(out_.str().find("LLM_MODEL"), std::string::npos);  // the environment variable
+  EXPECT_NE(out_.str().find("OPENAI_MODEL"), std::string::npos);  // the environment variable
 }
 
 TEST_F(OptionsTest, ParsingNeverWritesSecretValuesToTheOutput) {

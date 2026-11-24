@@ -34,9 +34,11 @@ const std::vector<Key>& KnownKeys() {
     const std::pair<const char*, const char*> settings[] = {
         {"discord_token", ""},
         {"llm_provider", "openai"},
-        {"llm_model", ""},
+        {"openai_api", "chat"},
+        {"openai_model", ""},
         {"openai_api_key", ""},
         {"openai_base_url", "https://api.openai.com/v1"},
+        {"anthropic_model", ""},
         {"anthropic_api_key", ""},
         {"anthropic_base_url", "https://api.anthropic.com"},
         {"model_dir", "models"},

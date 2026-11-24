@@ -46,6 +46,8 @@ Result Parse(const std::vector<std::string>& args,
         ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);  // a repeated key: last wins
   }
   app.add_flag("-v,--verbose", result.options.verbose, "Show debug messages");
+  app.add_option("--prompt", result.options.prompt, "Ask the model this question, print the answer and exit");
+  app.add_option("--system", result.options.system, "An instruction for the model, used with --prompt");
 #if defined(_WIN32)
   app.add_flag("--dependency-check", result.options.dependency_check,
                "List the DLLs this program loaded (where from, version, vcpkg package) and exit");

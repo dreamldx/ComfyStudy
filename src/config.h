@@ -10,8 +10,8 @@
 
 namespace config {
 
-// One setting. `name` is how it is written in a config file ("llm_model = ...") and on the command
-// line ("--llm_model"); `env` is the environment variable that can also provide it.
+// One setting. `name` is how it is written in a config file ("openai_model = ...") and on the command
+// line ("--openai_model"); `env` is the environment variable that can also provide it.
 struct Key {
   std::string name;
   std::string env;
@@ -25,7 +25,7 @@ const std::vector<Key>& KnownKeys();
 // Resolved settings: one entry per known key, keyed by Key::name; an empty string means "not set".
 using Values = std::map<std::string, std::string>;
 
-// "llm_model" -> "LLM_MODEL": the same name in upper case.
+// "openai_model" -> "OPENAI_MODEL": the same name in upper case.
 std::string EnvName(std::string_view name);
 
 // Value of an environment variable; an empty value counts as not set.

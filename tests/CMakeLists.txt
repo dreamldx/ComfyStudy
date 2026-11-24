@@ -14,5 +14,11 @@ add_comfystudy_test(test_deps)
 add_comfystudy_test(test_logging)
 add_comfystudy_test(test_options)
 add_comfystudy_test(test_config)
+add_comfystudy_test(test_llm_wire)
+add_comfystudy_test(test_transport)
+add_comfystudy_test(test_llm_client)
+# These two start a small HTTP server on the loopback interface.
+target_link_libraries(test_transport PRIVATE httplib::httplib)
+target_link_libraries(test_llm_client PRIVATE httplib::httplib)
 # Tests that exist on one system only are registered by the platform file.
 comfystudy_platform_tests()

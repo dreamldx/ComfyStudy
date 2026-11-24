@@ -12,11 +12,13 @@ set(COMFYSTUDY_COMPILE_OPTIONS
   /W4 /WX /permissive- /utf-8 /Zc:__cplusplus /external:anglebrackets /external:W0)
 
 # Third-party libraries come from vcpkg (see vcpkg.json); the preset points CMake at its toolchain file.
-find_package(nlohmann_json CONFIG REQUIRED)
+find_package(glaze CONFIG REQUIRED)
 find_package(CURL CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(CLI11 CONFIG REQUIRED)
+find_package(httplib CONFIG REQUIRED)  # only the tests use it: a small HTTP server on the loopback
+find_package(boost_asio CONFIG REQUIRED)  # the event loop and coroutines (header only)
 
 # Sources and system libraries that exist on Windows only.
 set(COMFYSTUDY_PLATFORM_SOURCES src/dll_info.cpp)

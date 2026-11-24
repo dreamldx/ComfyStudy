@@ -49,12 +49,12 @@ TEST(ConfigDescribe, PlainValueIsShown) {
 }
 
 TEST(ConfigDescribe, EmptyOrMissingValueIsUnset) {
-  EXPECT_EQ(config::Describe(ValuesWith({{"llm_model", ""}}), KeyNamed("llm_model")),
-            "llm_model=(unset)");
-  EXPECT_EQ(config::Describe({}, KeyNamed("llm_model")), "llm_model=(unset)");
+  EXPECT_EQ(config::Describe(ValuesWith({{"openai_model", ""}}), KeyNamed("openai_model")),
+            "openai_model=(unset)");
+  EXPECT_EQ(config::Describe({}, KeyNamed("openai_model")), "openai_model=(unset)");
 }
 
-TEST(ConfigKnownKeys, NineKeysInOrderWithTheRightOnesSecret) {
+TEST(ConfigKnownKeys, TheKeysInOrderWithTheRightOnesSecret) {
   struct Expected {
     const char* name;
     const char* env;
@@ -64,9 +64,11 @@ TEST(ConfigKnownKeys, NineKeysInOrderWithTheRightOnesSecret) {
   const std::vector<Expected> expected = {
       {"discord_token", "DISCORD_TOKEN", "", true},
       {"llm_provider", "LLM_PROVIDER", "openai", false},
-      {"llm_model", "LLM_MODEL", "", false},
+      {"openai_api", "OPENAI_API", "chat", false},
+      {"openai_model", "OPENAI_MODEL", "", false},
       {"openai_api_key", "OPENAI_API_KEY", "", true},
       {"openai_base_url", "OPENAI_BASE_URL", "https://api.openai.com/v1", false},
+      {"anthropic_model", "ANTHROPIC_MODEL", "", false},
       {"anthropic_api_key", "ANTHROPIC_API_KEY", "", true},
       {"anthropic_base_url", "ANTHROPIC_BASE_URL", "https://api.anthropic.com", false},
       {"model_dir", "MODEL_DIR", "models", false}};
@@ -81,7 +83,7 @@ TEST(ConfigKnownKeys, NineKeysInOrderWithTheRightOnesSecret) {
 }
 
 TEST(ConfigEnvName, IsTheNameInUpperCase) {
-  EXPECT_EQ(config::EnvName("llm_model"), "LLM_MODEL");
+  EXPECT_EQ(config::EnvName("openai_model"), "OPENAI_MODEL");
   EXPECT_EQ(config::EnvName("openai_api_key"), "OPENAI_API_KEY");
 }
 

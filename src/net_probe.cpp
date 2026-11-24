@@ -3,12 +3,12 @@
 #include <curl/curl.h>
 
 #include <CLI/CLI.hpp>
-#include <nlohmann/json.hpp>
+#include "json.h"
 
 std::string CurlVersion() { return curl_version(); }
 
 std::string JsonRoundTrip(const std::string& text) {
-  return nlohmann::json::parse(text).dump();
+  return json::Dump(json::Parse(text));
 }
 
 std::string NameFromArgs(const std::vector<std::string>& args) {

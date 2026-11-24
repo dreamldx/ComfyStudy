@@ -7,7 +7,7 @@
 std::string CurlVersion();
 
 // Parses `text` as JSON and returns it re-serialized in compact form.
-// Throws nlohmann::json::parse_error when `text` is not valid JSON.
+// Throws json::parse_error when `text` is not valid JSON.
 std::string JsonRoundTrip(const std::string& text);
 
 // Parses `args` (the command-line arguments after the program name) with CLI11 and returns the
