@@ -23,6 +23,8 @@ target_link_libraries(test_transport PRIVATE httplib::httplib)
 target_link_libraries(test_http_modes PRIVATE httplib::httplib)
 target_link_libraries(test_llm_client PRIVATE httplib::httplib)
 add_comfystudy_test(test_asio_basics)
+add_comfystudy_test(test_async_http)
+target_link_libraries(test_async_http PRIVATE httplib::httplib)
 target_link_libraries(test_asio_basics PRIVATE comfystudy_asio)
 # Tests that exist on one system only are registered by the platform file.
 comfystudy_platform_tests()

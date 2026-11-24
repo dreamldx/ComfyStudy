@@ -45,5 +45,9 @@
   - `http::Share`：让多个线程的句柄共享 DNS 缓存和 TLS 会话（share；不共享连接缓存，共享连接缓存时 libcurl 会崩）。
   - vcpkg 的 `curl[http2]`，以及 `Options::version` 可以强制 HTTP/1.1 或 HTTP/2。
   - `tests/test_http_modes.cpp`：9 个测试，本机用 cpp-httplib 起一个小服务器。
+  - `src/async_http.h`、`src/async_http.cpp`：三个协程客户端，签名相同：`boost::asio::awaitable<http::Response> Post(http::PostRequest)`。`PoolClient`（C）把阻塞的请求放进线程池，每个线程各有一个 `Session`；`CurlThreadClient`（A）用一个专门的线程跑 `curl_multi_poll`，完成后回到协程所在的执行器；`SocketClient`（B）用 `curl_multi_socket_action`，把 libcurl 的套接字交给事件循环等待，没有额外的线程。A 和 B 可以取消在途的请求，C 不能。
+  - `src/curl_support.h`：上面几个文件共用的 libcurl 辅助代码（原来在 `http_client.cpp` 里），内部使用。
+  - `tests/test_async_http.cpp`：23 个测试，同一组测试（`TYPED_TEST`）跑遍三个客户端：答案、错误状态、20 个请求同时在途、一个请求失败不影响其他、超时只影响那一个、协程回到自己的线程；A 和 B 另有取消和“销毁客户端时还在途的请求”两个测试，C 有一个“取消要等当前请求结束”的测试。
+  - Windows 上用事件循环等 libcurl 的套接字有一个坑：连接被拒绝不是“可写”，而是出现在 select 的异常集合里，不额外等 `wait_error` 的话，失败要等到 libcurl 自己的连接超时（默认 10 秒）才发现。
   - `bench/curl_bench.cpp`（目标 `curl_bench`，不属于机器人程序）：在本机服务器（每个请求等 300 ms）和真实的模型服务上，比较顺序发送、线程池、`Share`、`Session` 和 multi 等发送方式的总耗时与新建连接数。用法：`curl_bench local N DELAY_MS THREADS REPS`、`curl_bench llm N THREADS any|1.1|2`（真实服务的地址和密钥从 `config.ini` 读，不会打印）。
 - 文档：[platform-2.2 libcurl 三种用法：在事件循环里的实现与对比（Windows）](https://dreamldx.github.io/ComfyStudy/contrib/quest-platform-02-event-loop-network/platform-2.2-curl-modes/)
