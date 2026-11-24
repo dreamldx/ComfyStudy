@@ -1,9 +1,9 @@
-# llm-1.1 libcurl 三种用法的对比（easy、multi、share）
+# llm-1.2 libcurl 三种用法：在事件循环里的实现与对比
 
-- 状态：已验证 ｜ 类型：支线 ｜ 分支：`quest/llm-01-llm-app-engineering`（支线不打 tag，用 `git log quest/llm-01-llm-app-engineering --grep="^chapter-llm-1.1"` 定位本章提交）
+- 状态：编写中 ｜ 类型：支线 ｜ 分支：`quest/llm-01-llm-app-engineering`（支线不打 tag，用 `git log quest/llm-01-llm-app-engineering --grep="^chapter-llm-1.2"` 定位本章提交）
 - 所属支线：[支线 llm-01：LLM 应用工程](README.md)
 - 可开始于：主线 [1.1 HTTP 与 JSON](../../tutorial/phase-01-llm-chat/1.1-http-json.md)
-- 一句话目标：在同一批 LLM 请求上测出 libcurl 的 easy、multi、share 三种用法的差别（各阶段耗时、连接数、总耗时），开启 HTTP/2 并比较它和 HTTP/1.1 多连接的区别，最后选定机器人默认用“线程池加 easy”
+- 一句话目标：把 libcurl 的 easy、multi、share 三种用法做成积木（`Timing`、`Session`、`PostMany`、`Share`），再做三种协程实现并排比较：C 线程池加 `Session`、A 一个 curl 线程加 `post`、B `curl_multi_socket_action` 接 Asio；讲 HTTP/1.1 与 HTTP/2 的原理和差别，在本机基准（Release）和真实服务（OpenRouter、Anthropic，OpenAI 官方只记 ALPN）上测出差别，得出机器人默认用哪一种；依赖 llm-1.1
 
 ## 1. 本章目标与成果
 
@@ -41,7 +41,7 @@
 
 ## 3. 本章改动
 
-本章的代码在支线分支 `quest/llm-01-llm-app-engineering` 上，不合入 main，也不打 tag。提交信息以 `chapter-llm-1.1-curl-modes:` 开头，`git log quest/llm-01-llm-app-engineering --grep="^chapter-llm-1.1"` 可以找到。本章有两个提交：
+本章的代码在支线分支 `quest/llm-01-llm-app-engineering` 上，不合入 main，也不打 tag。提交信息以 `chapter-llm-1.2-curl-modes:` 开头，`git log quest/llm-01-llm-app-engineering --grep="^chapter-llm-1.2"` 可以找到。本章有两个提交：
 
 1. 库代码、测试和 HTTP/2：
    - `vcpkg.json`：curl 加上 `http2` 特性（会多装 nghttp2）。
@@ -512,4 +512,4 @@ multi, 4 in flight                       1405          448            1        1
 
 ## 11. 下一章预告
 
-下一章 llm-1.2 讲 Boost.Asio 的事件循环、定时器和 C++20 协程；llm-1.3 再把 libcurl 的 multi 接进去，两种驱动方式都做。之后的 llm-1.4 是流式输出（SSE）：不等整个回答，边收边显示，会用到这套协程和定时器。
+下一章 llm-1.1 讲 Boost.Asio 的事件循环、定时器和 C++20 协程；llm-1.3 再把 libcurl 的 multi 接进去，两种驱动方式都做。之后的 llm-1.4 是流式输出（SSE）：不等整个回答，边收边显示，会用到这套协程和定时器。

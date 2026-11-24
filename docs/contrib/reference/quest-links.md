@@ -163,9 +163,9 @@
 | [diffusion-16.7 SDXL 文生图](../quest-diffusion-16-sdxl/diffusion-16.7-sdxl-txt2img.md) | SDXL | [10.7 Inpaint 与 Outpaint](../../tutorial/phase-10-txt2img/10.7-inpaint-outpaint.md) |  |
 | [diffusion-17.1 运行 SD 1.5、Flux、Qwen-Image](../quest-diffusion-17-sdcpp-compare/diffusion-17.1-sdcpp-models.md) | 后端对照：stable-diffusion.cpp | [16.6 Qwen-Image 文生图](../../tutorial/phase-16-qwen-image/16.6-qwen-txt2img.md) | 依赖主线阶段 13 的 `backend=sdcpp` 与阶段 15、16 的自研实现 |
 | [diffusion-17.2 后端对比](../quest-diffusion-17-sdcpp-compare/diffusion-17.2-backend-comparison.md) | 后端对照：stable-diffusion.cpp | [16.6 Qwen-Image 文生图](../../tutorial/phase-16-qwen-image/16.6-qwen-txt2img.md) | 依赖主线阶段 13 的 `backend=sdcpp` 与阶段 15、16 的自研实现 |
-| [llm-1.1 libcurl 三种用法的对比（easy、multi、share）](../quest-llm-01-llm-app-engineering/llm-1.1-curl-modes.md) | LLM 应用工程 | [1.1 HTTP 与 JSON](../../tutorial/phase-01-llm-chat/1.1-http-json.md) |  |
-| [llm-1.2 事件循环：Boost.Asio 的定时器与协程](../quest-llm-01-llm-app-engineering/llm-1.2-asio-basics.md) | LLM 应用工程 | [1.1 HTTP 与 JSON](../../tutorial/phase-01-llm-chat/1.1-http-json.md) |  |
-| [llm-1.3 用 Asio 驱动 libcurl multi](../quest-llm-01-llm-app-engineering/llm-1.3-asio-curl.md) | LLM 应用工程 | [1.1 HTTP 与 JSON](../../tutorial/phase-01-llm-chat/1.1-http-json.md) | 依赖 llm-1.1、llm-1.2 |
+| [llm-1.2 libcurl 三种用法：在事件循环里的实现与对比](../quest-llm-01-llm-app-engineering/llm-1.2-curl-modes.md) | LLM 应用工程 | [1.1 HTTP 与 JSON](../../tutorial/phase-01-llm-chat/1.1-http-json.md) |  |
+| [llm-1.1 事件循环：Boost.Asio 的定时器与协程](../quest-llm-01-llm-app-engineering/llm-1.1-asio-basics.md) | LLM 应用工程 | [1.1 HTTP 与 JSON](../../tutorial/phase-01-llm-chat/1.1-http-json.md) |  |
+| [llm-1.3 Transport 接口与契约测试](../quest-llm-01-llm-app-engineering/llm-1.3-transport.md) | LLM 应用工程 | [1.1 HTTP 与 JSON](../../tutorial/phase-01-llm-chat/1.1-http-json.md) | 依赖 llm-1.2、llm-1.1 |
 | [llm-1.4 流式输出（SSE）](../quest-llm-01-llm-app-engineering/llm-1.4-streaming-sse.md) | LLM 应用工程 | [1.2 LLM 双协议与 Provider 抽象](../../tutorial/phase-01-llm-chat/1.2-llm-providers.md) |  |
 | [llm-1.5 结构化输出与 JSON Schema 校验](../quest-llm-01-llm-app-engineering/llm-1.5-structured-output.md) | LLM 应用工程 | [1.3 Tool Calling 循环](../../tutorial/phase-01-llm-chat/1.3-tool-calling.md) |  |
 | [llm-1.6 上下文窗口与历史压缩](../quest-llm-01-llm-app-engineering/llm-1.6-context-window.md) | LLM 应用工程 | [1.6 上下文规划与组装](../../tutorial/phase-01-llm-chat/1.6-context-assembly.md) |  |
