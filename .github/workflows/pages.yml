@@ -1,6 +1,6 @@
 name: Pages
 
-# Builds the tutorial (docs/tutorial) with MkDocs Material and deploys it to GitHub Pages.
+# Builds the tutorial and the quest (docs/tutorial, docs/contrib) with MkDocs Material and deploys it to GitHub Pages.
 # It runs when a chapter is finished, i.e. when a chapter tag (chapter-*) is pushed, so the
 # site shows the tutorial as of the last finished chapter. Run it by hand (workflow_dispatch)
 # to publish documentation fixes between chapters.
@@ -32,6 +32,8 @@ jobs:
           cache-dependency-path: requirements-docs.txt
       - name: Install MkDocs
         run: pip install -r requirements-docs.txt
+      - name: Generate the dependency graph
+        run: python scripts/make-dep-graph.py
       - name: Generate the navigation
         run: python scripts/make-site-nav.py
       - name: Build the site
