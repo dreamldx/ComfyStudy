@@ -10,7 +10,7 @@
 
 | 编号 | 章节 | 提交前缀 | 目标 |
 |---|---|---|---|
-| llm-1.2 | [libcurl 三种用法：在事件循环里的实现与对比](llm-1.2-curl-modes.md) | `chapter-llm-1.2-curl-modes:` | 把 libcurl 的 easy、multi、share 三种用法做成积木（`Timing`、`Session`、`PostMany`、`Share`），再做三种协程实现并排比较：C 线程池加 `Session`、A 一个 curl 线程加 `post`、B `curl_multi_socket_action` 接 Asio；讲 HTTP/1.1 与 HTTP/2 的原理和差别，在本机基准（Release）和真实服务（OpenRouter、Anthropic，OpenAI 官方只记 ALPN）上测出差别，得出机器人默认用哪一种；依赖 llm-1.1 |
+| llm-1.2 | [libcurl 三种用法：在事件循环里的实现与对比](llm-1.2-curl-modes.md) | `chapter-llm-1.2-curl-modes:` | 把 libcurl 的 easy、multi、share 三种用法做成积木（`Timing`、`Session`、`PostMany`、`Share`），再做三种协程实现并排比较：线程池加 `Session`、一个 curl 线程加 `post`、`curl_multi_socket_action` 接 Asio；讲 HTTP/1.1 与 HTTP/2 的原理和差别，在本机基准（Release）和真实服务（OpenRouter、Anthropic，OpenAI 官方只记 ALPN）上测出差别，得出机器人默认用哪一种；依赖 llm-1.1 |
 | llm-1.1 | [事件循环：Boost.Asio 的定时器与协程](llm-1.1-asio-basics.md) | `chapter-llm-1.1-asio-basics:` | 弄清事件循环是什么，用 Boost.Asio 写出定时器、协程、超时和取消，讲清多线程 `io_context` 与 `strand`；在三个执行器（事件循环、阻塞线程池、GPU 线程）之间切换；让一个请求的所有步骤共用一个截止时间；用 `TaskGroup` 做关停；用可以手动推进的时钟让测试不依赖真实时间；本章不连网络，后面的章节在它上面接 libcurl |
 | llm-1.3 | [Transport 接口与契约测试](llm-1.3-transport.md) | `chapter-llm-1.3-transport:` | 把 `Post` 抽成 `Transport` 接口（`asio::awaitable<Response> Post(PostRequest, Options)`，时钟可注入），写一套契约测试跑遍所有实现；讲清取消如何传到在途请求、传输层结果的错误分类（可重试、不可重试，供重试使用）、日志里对 `Authorization` 脱敏；DPP 的回调在池线程里执行，用 `post` 或 `co_spawn` 转进 `io_context`；依赖 llm-1.2，结论用于重写主线 1.1 |
 | llm-1.4 | [流式输出（SSE）](llm-1.4-streaming-sse.md) | `chapter-llm-1.4-streaming-sse:` | 解析服务端推送的事件流，边收边显示；Discord 里用限速的消息编辑模拟打字效果 |

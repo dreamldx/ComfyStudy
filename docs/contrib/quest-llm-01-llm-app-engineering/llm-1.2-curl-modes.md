@@ -3,7 +3,7 @@
 - 状态：已验证 ｜ 类型：支线 ｜ 分支：`quest/llm-01-llm-app-engineering`（支线不打 tag，用 `git log quest/llm-01-llm-app-engineering --grep="^chapter-llm-1.2"` 定位本章提交）
 - 所属支线：[支线 llm-01：LLM 应用工程](README.md)
 - 可开始于：主线 [1.1 HTTP 与 JSON](../../tutorial/phase-01-llm-chat/1.1-http-json.md)
-- 一句话目标：把 libcurl 的 easy、multi、share 三种用法做成积木（`Timing`、`Session`、`PostMany`、`Share`），再做三种协程实现并排比较：C 线程池加 `Session`、A 一个 curl 线程加 `post`、B `curl_multi_socket_action` 接 Asio；讲 HTTP/1.1 与 HTTP/2 的原理和差别，在本机基准（Release）和真实服务（OpenRouter、Anthropic，OpenAI 官方只记 ALPN）上测出差别，得出机器人默认用哪一种；依赖 llm-1.1
+- 一句话目标：把 libcurl 的 easy、multi、share 三种用法做成积木（`Timing`、`Session`、`PostMany`、`Share`），再做三种协程实现并排比较：线程池加 `Session`、一个 curl 线程加 `post`、`curl_multi_socket_action` 接 Asio；讲 HTTP/1.1 与 HTTP/2 的原理和差别，在本机基准（Release）和真实服务（OpenRouter、Anthropic，OpenAI 官方只记 ALPN）上测出差别，得出机器人默认用哪一种；依赖 llm-1.1
 
 ## 1. 本章目标与成果
 
@@ -14,12 +14,12 @@
 - 每个请求各阶段的耗时：域名解析、建立连接、TLS 握手、首字节、总耗时，以及这个请求有没有建立新连接。
 - libcurl 三种接口的封装：`http::Session`（easy：保留句柄，复用连接）、`http::PostMany`（multi：一个线程里同时发许多个请求）、`http::Share`（share：让多个线程的句柄共享缓存）。
 - 三个协程客户端，签名相同，都是 `awaitable<Response> Post(PostRequest)`：
-  - `PoolClient`（下面叫 C）：阻塞的请求放进线程池，每个线程有自己的 `Session`。
-  - `CurlThreadClient`（A）：一个专门的线程跑 `curl_multi_poll`，所有请求挂在同一个 multi 句柄上。
-  - `SocketClient`（B）：`curl_multi_socket_action`，libcurl 的套接字交给事件循环等，没有额外的线程。
+  - 线程池方案，`PoolClient`：阻塞的请求放进线程池，每个线程有自己的 `Session`。
+  - curl 线程方案，`CurlThreadClient`：一个专门的线程跑 `curl_multi_poll`，所有请求挂在同一个 multi 句柄上。
+  - socket_action 方案，`SocketClient`：`curl_multi_socket_action`，libcurl 的套接字交给事件循环等，没有额外的线程。
 - libcurl 的 HTTP/2 支持（vcpkg 的 `curl[http2]`），以及 HTTP/1.1 和 HTTP/2 的原理与差别。
 - 一个基准程序 `curl_bench`：本机服务器上的对比，真实服务（OpenRouter、Anthropic）上的对比，以及四个只读的探测（三家服务对 HTTP/2 怎么说、空闲的连接活多久、流式请求在 HTTP/2 下怎么到达、12 到 300 个请求同时在途时多路复用怎么样）。
-- 结论：机器人默认用 A，理由和数据在第 6、7 节。
+- 结论：机器人默认用 curl 线程方案，理由和数据在第 6、7 节。
 
 本章只测了 POST 一个完整回答的情形，没有做限流（429）的实验；流式输出留给 llm-1.4；`Transport` 接口留给 llm-1.3。
 
@@ -41,13 +41,13 @@
 
 三个客户端要解决的是同一件事：协程发起请求后暂停，线程去做别的事，请求结束时协程在自己的线程上继续。差别在谁等网络、用几个线程。
 
-**C：线程池加 `Session`。** 协程把“发一个阻塞请求”交给线程池（第 4 节的 `OnPool`），池线程里调用 `Session::Post`，请求结束后协程恢复。每个池线程有一个自己的 `Session`，一个 `Session` 一个句柄，连接留在句柄的缓存里。同时在途的请求数不超过线程数，多的要排队。一个请求在 `curl_easy_perform` 里面的时候，那个线程只能等它结束，所以不能被打断。
+**线程池方案：线程池加 `Session`。** 协程把“发一个阻塞请求”交给线程池（第 4 节的 `OnPool`），池线程里调用 `Session::Post`，请求结束后协程恢复。每个池线程有一个自己的 `Session`，一个 `Session` 一个句柄，连接留在句柄的缓存里。同时在途的请求数不超过线程数，多的要排队。一个请求在 `curl_easy_perform` 里面的时候，那个线程只能等它结束，所以不能被打断。
 
-**A：一个线程跑 multi。** 一个专门的线程循环调用 `curl_multi_perform` 和 `curl_multi_poll`，所有请求都是这个 multi 句柄上的传输。协程发起请求时，把请求放进一个队列，用 `curl_multi_wakeup` 叫醒 curl 线程；请求结束时，curl 线程把结果通过协程所在执行器 `post` 回去。取消一个请求就是把它从 multi 句柄里摘掉。同时在途的请求数没有上限。
+**curl 线程方案：一个线程跑 multi。** 一个专门的线程循环调用 `curl_multi_perform` 和 `curl_multi_poll`，所有请求都是这个 multi 句柄上的传输。协程发起请求时，把请求放进一个队列，用 `curl_multi_wakeup` 叫醒 curl 线程；请求结束时，curl 线程把结果通过协程所在执行器 `post` 回去。取消一个请求就是把它从 multi 句柄里摘掉。同时在途的请求数没有上限。
 
-**B：`curl_multi_socket_action`，事件循环等套接字。** libcurl 不自己等了，它通过两个回调告诉你：“请监视这个套接字的读或写”，“请在 N 毫秒后叫我”。你把套接字交给事件循环去等，事件到了或时间到了，再调用 `curl_multi_socket_action` 告诉 libcurl。整个过程在事件循环的那一个线程里，没有额外的线程。
+**socket_action 方案：`curl_multi_socket_action`，事件循环等套接字。** libcurl 不自己等了，它通过两个回调告诉你：“请监视这个套接字的读或写”，“请在 N 毫秒后叫我”。你把套接字交给事件循环去等，事件到了或时间到了，再调用 `curl_multi_socket_action` 告诉 libcurl。整个过程在事件循环的那一个线程里，没有额外的线程。
 
-三者的差别可以这样记：C 把“阻塞”放进线程，A 把“阻塞”集中到一个线程，B 干脆没有阻塞。
+三者的差别可以这样记：线程池方案把“阻塞”放进线程，curl 线程方案把“阻塞”集中到一个线程，socket_action 方案干脆没有阻塞。
 
 ### 2.4 HTTP/1.1 和 HTTP/2
 
@@ -56,7 +56,7 @@
 - **协商：** 浏览器和 libcurl 在 TLS 握手里用 ALPN 协商用哪个版本。客户端提供 `h2` 和 `http/1.1`，服务端选一个，选 `h2` 就走 HTTP/2。明文 http 没有 TLS，也就没有 ALPN，所以明文 http 总是 HTTP/1.1，本机的测试服务器（cpp-httplib 也不支持 HTTP/2）测不了 HTTP/2，只能用真实服务。
 - **流量控制：** 每个流和整条连接各有一个接收窗口，接收方用 `WINDOW_UPDATE` 帧放行更多数据。慢的接收方只会让自己那个流（和整条连接的总量）慢下来，不会让别的流的数据丢失。对 SSE 这类长时间持续的流，窗口决定了发送方领先接收方多远。
 - **队头阻塞：** HTTP/2 解决了“一条连接一次一个请求”的阻塞，但所有的流还在同一条 TCP 连接上，一个丢包会让这条连接上所有的流都等重传。HTTP/3（QUIC）用 UDP 绕开这一点。本章不测 HTTP/3，只记录服务有没有宣告它（`Alt-Svc` 头）。
-- **谁能享受多路复用：** libcurl 里只有同一个 multi 句柄里的请求会共用一条连接。所以 A 和 B（一个 multi 句柄）在 HTTP/2 下 12 个请求只开一条连接，而 C 每个线程各有各的句柄，各开各的连接，4 个线程就是 4 条，用不上多路复用。
+- **谁能享受多路复用：** libcurl 里只有同一个 multi 句柄里的请求会共用一条连接。所以 curl 线程方案和 socket_action 方案（一个 multi 句柄）在 HTTP/2 下 12 个请求只开一条连接，而 线程池方案每个线程各有各的句柄，各开各的连接，4 个线程就是 4 条，用不上多路复用。
 
 ### 2.5 并发度比连接复用重要
 
@@ -249,7 +249,7 @@ Share::Share() : impl_(std::make_unique<Impl>()) {
 
 ### 4.5 从协程里等一个别的线程的结果
 
-三个客户端里 A 和 B 都要把“请求结束了”这件事交给暂停着的协程。`Suspend` 做这件事：
+三个客户端里 curl 线程方案和 socket_action 方案都要把“请求结束了”这件事交给暂停着的协程。`Suspend` 做这件事：
 
 <!-- src: src/async_http.cpp#L28-L48 -->
 ```cpp
@@ -278,7 +278,7 @@ asio::awaitable<Response> Suspend(Start start) {
 
 `async_initiate` 让这个函数成为一个可以 `co_await` 的异步操作：初始化函数拿到 `handler`（协程恢复的入口）、它所在的执行器和取消的入口。我们把它们包进一个 `Done` 函数交给 `start`；`Done` 可以在任何线程里调用，它用 `asio::post` 把恢复协程的动作投回协程自己的执行器（这里一定要 `post`，不能 `dispatch`：`dispatch` 在同一个线程上会立刻运行，协程就在 libcurl 的回调里恢复了，它要是又发起新请求，就是在 libcurl 的回调里调用 libcurl）。`executor_work_guard` 让事件循环在请求在途期间不会以为自己没事做而退出。
 
-### 4.6 C：`PoolClient`
+### 4.6 线程池方案：`PoolClient`
 
 <!-- src: src/async_http.cpp#L67-L111 -->
 ```cpp
@@ -331,7 +331,7 @@ asio::awaitable<Response> PoolClient::Post(PostRequest request) {
 
 一共有多少个线程就有多少个 `Session`，`Lease` 在一个请求的期间借出一个，用完放回去；放回去时放在最后，借的时候从最后拿，所以刚用过的 `Session`（连接最热）会被最先再用。`OnPool` 是 llm-1.1 里写的“切到池里干活再回来”。
 
-### 4.7 A：`CurlThreadClient`
+### 4.7 curl 线程方案：`CurlThreadClient`
 
 协程这一侧把请求放进队列，登记取消的动作，叫醒 curl 线程：
 
@@ -408,9 +408,9 @@ curl 线程这一侧的循环：每一轮先取出新请求和要取消的请求
       }
 ```
 
-`curl_multi_wakeup` 是 libcurl 里少数明确可以从别的线程调用的函数，A 的线程安全就靠它加一把保护队列的锁。收完的传输在下半部分处理，和 `PostMany` 里一样。
+`curl_multi_wakeup` 是 libcurl 里少数明确可以从别的线程调用的函数，curl 线程方案的线程安全就靠它加一把保护队列的锁。收完的传输在下半部分处理，和 `PostMany` 里一样。
 
-### 4.8 B：`SocketClient`
+### 4.8 socket_action 方案：`SocketClient`
 
 libcurl 通过两个回调把工作交给我们：
 
@@ -504,7 +504,7 @@ libcurl 通过两个回调把工作交给我们：
   }
 ```
 
-读和写各等一次，等到了就通知 libcurl，然后看这个套接字是否还登记着，登记着就再等。最后一段是 Windows 特有的：连接失败（被拒绝、不可达）在 Windows 上不是“可写”，而是出现在 select 的异常集合里，不额外等 `wait_error`，失败要等到 libcurl 自己的连接超时（默认 10 秒）才会被发现。这个问题是测试里发现的：B 的那一组 6 个测试，不等 `wait_error` 要约 11.9 秒（其中“一个请求失败不影响其他”一项就是 10 秒），等了之后约 1.9 秒。
+读和写各等一次，等到了就通知 libcurl，然后看这个套接字是否还登记着，登记着就再等。最后一段是 Windows 特有的：连接失败（被拒绝、不可达）在 Windows 上不是“可写”，而是出现在 select 的异常集合里，不额外等 `wait_error`，失败要等到 libcurl 自己的连接超时（默认 10 秒）才会被发现。这个问题是测试里发现的：socket_action 方案的那一组 6 个测试，不等 `wait_error` 要约 11.9 秒（其中“一个请求失败不影响其他”一项就是 10 秒），等了之后约 1.9 秒。
 
 通知 libcurl 之后，收取完成的传输：
 
@@ -556,7 +556,7 @@ TYPED_TEST(AsyncHttpTest, TwentyRequestsAtTheSameTimeEachGetTheirOwnAnswer) {
 }
 ```
 
-只有 A 和 B 能做的取消，放在单独的一组里：
+只有 curl 线程方案和 socket_action 方案能做的取消，放在单独的一组里：
 
 <!-- src: tests/test_async_http.cpp#L169-L187 -->
 ```cpp
@@ -629,21 +629,21 @@ pool, shared caches (Share)              1555          311           20        4
 pool, a Session per thread               1554          311            4        4  20/20  HTTP/1.1
 multi, all in flight                      310          307           20        1  20/20  HTTP/1.1
 multi, 4 in flight                       1549          310            4        1  20/20  HTTP/1.1
-async C: pool of Sessions                1552          310            4        5  20/20  HTTP/1.1
-async A: one curl thread                  310          308           20        2  20/20  HTTP/1.1
-async B: socket_action                    311          307           20        1  20/20  HTTP/1.1
+async, thread pool + Session             1552          310            4        5  20/20  HTTP/1.1
+async, one curl thread                    310          308           20        2  20/20  HTTP/1.1
+async, socket_action                      311          307           20        1  20/20  HTTP/1.1
 ```
 
 - 顺序发 20 个就是 20 个 300 毫秒，复用连接不改变总耗时（省下的只有每个请求零点几毫秒）。
 - 线程池 4 个线程：20 个请求要 5 轮，约 1550 毫秒。共享缓存（`Share`）没有带来可见的变化，因为本机连接没有域名解析也没有 TLS 可省。
 - multi 全部同时发出：310 毫秒，一个线程。限制成 4 个同时进行，就和 4 个线程的池一样，1549 毫秒：时间取决于同时在途的数量。
-- 三个协程客户端：C 的 1552 毫秒和 `pool, a Session per thread` 一样（4 个线程，4 条连接）；A 和 B 的 310、311 毫秒和 `multi, all in flight` 一样，A 比 B 多一个线程，B 只用事件循环的那一个。
+- 三个协程客户端：线程池方案的 1552 毫秒和 `pool, a Session per thread` 一样（4 个线程，4 条连接）；curl 线程方案和 socket_action 方案的 310、311 毫秒和 `multi, all in flight` 一样，curl 线程方案比 socket_action 方案多一个线程，socket_action 方案只用事件循环的那一个。
 
 ### 5.2 真实服务：12 个问题，4 个线程
 
 ```powershell
 $env:BENCH_REPS = 5
-$env:BENCH_ONLY = "4,5,7,8,9"   # 只跑这几种：一个 Session 一个线程的池、multi、C、A、B
+$env:BENCH_ONLY = "4,5,7,8,9"   # 只跑这几种：每线程一个 Session 的池、multi，以及三个协程客户端
 build\windows-release\bin\curl_bench.exe llm 12 4 1.1
 build\windows-release\bin\curl_bench.exe llm 12 4 2
 build\windows-release\bin\curl_bench.exe llm 12 4 1.1 --llm_provider anthropic
@@ -656,29 +656,29 @@ OpenRouter（`openai_base_url` 指向它），毫秒；括号里是新建的连�
 
 | 策略 | HTTP/1.1 | HTTP/2 |
 |---|---|---|
-| 池，每线程一个 Session（4 线程） | 1589（4） | 1176（4） |
-| multi，全部同时发出 | 463（12） | 654（1） |
-| C：Session 池（4 线程） | 1008（4） | 1079（4） |
-| A：一个 curl 线程 | 620（12） | 567（1） |
-| B：`socket_action` | 700（12） | 612（1） |
+| 阻塞的池，每线程一个 Session（4 线程） | 1589（4） | 1176（4） |
+| 阻塞的 multi，全部同时发出 | 463（12） | 654（1） |
+| 线程池加 Session（4 线程） | 1008（4） | 1079（4） |
+| 一个 curl 线程 | 620（12） | 567（1） |
+| `socket_action` 接事件循环 | 700（12） | 612（1） |
 
 Anthropic：
 
 | 策略 | HTTP/1.1 | HTTP/2 |
 |---|---|---|
-| 池，每线程一个 Session（4 线程） | 2423（4） | 2443（4） |
-| multi，全部同时发出 | 1235（12） | 1242（1） |
-| C：Session 池（4 线程） | 2431（4） | 2449（4） |
-| A：一个 curl 线程 | 1172（12） | 1170（1） |
-| B：`socket_action` | 1192（12） | 1166（1） |
+| 阻塞的池，每线程一个 Session（4 线程） | 2423（4） | 2443（4） |
+| 阻塞的 multi，全部同时发出 | 1235（12） | 1242（1） |
+| 线程池加 Session（4 线程） | 2431（4） | 2449（4） |
+| 一个 curl 线程 | 1172（12） | 1170（1） |
+| `socket_action` 接事件循环 | 1192（12） | 1166（1） |
 
 怎么读：
 
-- **连接数是确定的差别：** multi、A、B 在 HTTP/2 下 12 个请求只开 1 条连接，HTTP/1.1 下开 12 条；线程池（C）不论哪个版本都是 4 条，它没有任何东西可以复用。
+- **连接数是确定的差别：** multi、curl 线程方案、socket_action 方案在 HTTP/2 下 12 个请求只开 1 条连接，HTTP/1.1 下开 12 条；线程池方案不论哪个版本都是 4 条，它没有任何东西可以复用。
 - **总耗时和 HTTP 版本几乎无关：** Anthropic 上同一个策略 HTTP/1.1 和 HTTP/2 差不到 3%；OpenRouter 上的差别（比如 multi 的 463 对 654）在同一个服务的波动范围内，同一个问题的回答时间从 170 毫秒到 1 秒多都出现过，总耗时又取决于最慢的那个回答。
-- **总耗时取决于同时能发几个：** Anthropic 单个回答约 750 毫秒，12 个请求，4 个线程要 3 轮，约 2.4 秒，而 A、B、multi 一次发完，约 1.2 秒。
-- **波动有多大，看设计相同的两行：** OpenRouter 上“池，每线程一个 Session”和 C 是同一种做法，分别是 1589 和 1008 毫秒。
-- **A 和 B 的差别在这个量级上看不出来**，两个都和一个线程的阻塞 multi 一样快。
+- **总耗时取决于同时能发几个：** Anthropic 单个回答约 750 毫秒，12 个请求，4 个线程要 3 轮，约 2.4 秒，而 curl 线程方案、socket_action 方案、multi 一次发完，约 1.2 秒。
+- **波动有多大，看设计相同的两行：** OpenRouter 上“阻塞的池，每线程一个 Session”和线程池加 Session 的协程客户端是同一种做法，分别是 1589 和 1008 毫秒。
+- **curl 线程方案和 socket_action 方案的差别在这个量级上看不出来**，两个都和一个线程的阻塞 multi 一样快。
 
 ### 5.3 三家服务怎么说 HTTP/2
 
@@ -814,15 +814,15 @@ Anthropic：
 
 - `ctest`：144 个测试通过，本章新增 32 个：
   - `test_http_modes`（9 个）：响应带着各阶段耗时且前一个节点不晚于后一个节点；`Post` 每次新建连接，`Session` 第二次请求复用连接；`Session` 在一个请求失败后还能继续用；`PostMany` 的答案按请求顺序返回、同时进行的数量不超过上限、一个请求失败或超时不影响其他；6 个线程共用一个 `Share` 各自拿到自己的回答；对明文 http 要求 HTTP/2 时仍然是 HTTP/1.1。
-  - `test_async_http`（23 个）：三个客户端各 6 个共同的测试（答案、错误状态也是答案、20 个请求同时在途各拿各的、一个请求失败不影响其他、超时只影响那一个、协程回到自己的线程）；A 和 B 各 2 个取消的测试（取消协程取消请求、销毁客户端时在途的请求以错误结束）；C 有一个测试说明取消要等当前请求结束。
+  - `test_async_http`（23 个）：三个客户端各 6 个共同的测试（答案、错误状态也是答案、20 个请求同时在途各拿各的、一个请求失败不影响其他、超时只影响那一个、协程回到自己的线程）；curl 线程方案和 socket_action 方案各 2 个取消的测试（取消协程取消请求、销毁客户端时在途的请求以错误结束）；线程池方案有一个测试说明取消要等当前请求结束。
 - `scripts/check-build.ps1`：通过（编译 24 条、链接 15 条）。
 - 崩溃的检查：基准程序里每个策略在 Debug 构建里各跑 30 到 60 次。修好销毁顺序之后，不共享连接缓存的 `Share` 连续 60 次没有崩溃；曾经出现的崩溃见第 8 节。
 - 稳定性：`test_async_http` 连续运行 3 次，每次 23 个全部通过。
-- 真实服务：B 在 TLS（Windows 的 Schannel）和 HTTP/2 上，12 个请求 12 个成功，只开一条连接。
+- 真实服务：socket_action 方案在 TLS（Windows 的 Schannel）和 HTTP/2 上，12 个请求 12 个成功，只开一条连接。
 
 ### 对比
 
-| | C 线程池加 Session | A 一个 curl 线程 | B `socket_action` |
+| | 线程池加 Session | 一个 curl 线程 | `socket_action` 接事件循环 |
 |---|---|---|---|
 | 线程（含事件循环线程） | 池线程数加 1 | 2 | 1 |
 | 同时在途的请求 | 不超过线程数 | 不限 | 不限 |
@@ -837,17 +837,17 @@ Anthropic：
 
 ## 7. 技术资料
 
-**结论：机器人默认用 A（`CurlThreadClient`）。**
+**结论：机器人默认用 curl 线程方案（`CurlThreadClient`）。**
 
-- 对比 C：同样 12 个请求，C 受线程数限制，4 个线程要 3 轮，是 A 的两倍时间；要追上 A 就得开 12 个线程。A 只多一个线程，请求数不受限。更重要的是 C 不能取消一个正在进行的请求：Discord 里用户发 `/cancel` 或者要“停”，请求还要在池线程里一直等到它自己结束或超时，那个线程在这段时间里什么也干不了。
-- 对比 B：A 和 B 在所有测量里一样快。B 少一个线程，但代码多约三分之一，而且有平台相关的坑（Windows 上要多等一个事件），必须只在事件循环线程上用。A 的线程安全靠 libcurl 明确保证可以跨线程调用的 `curl_multi_wakeup`，坑少。省下的一个线程不值得。
-- 保留 B：如果以后想要进程里一个额外线程都没有，B 是可用的，测试已经覆盖了它。保留 C：最简单，工具里偶尔发一个请求、不需要取消的地方可以直接用。
-- 这个结论会用来重写主线 1.1：`Post` 变成返回 `awaitable<Response>` 的函数，背后用 A；下一章 llm-1.3 把它抽成 `Transport` 接口。
+- 对比线程池方案：同样 12 个请求，线程池方案受线程数限制，4 个线程要 3 轮，是 curl 线程方案的两倍时间；要追上 curl 线程方案就得开 12 个线程。curl 线程方案只多一个线程，请求数不受限。更重要的是 线程池方案不能取消一个正在进行的请求：Discord 里用户发 `/cancel` 或者要“停”，请求还要在池线程里一直等到它自己结束或超时，那个线程在这段时间里什么也干不了。
+- 对比 socket_action 方案：curl 线程方案和 socket_action 方案在所有测量里一样快。socket_action 方案少一个线程，但代码多约三分之一，而且有平台相关的坑（Windows 上要多等一个事件），必须只在事件循环线程上用。curl 线程方案的线程安全靠 libcurl 明确保证可以跨线程调用的 `curl_multi_wakeup`，坑少。省下的一个线程不值得。
+- 保留 socket_action 方案：如果以后想要进程里一个额外线程都没有，socket_action 方案是可用的，测试已经覆盖了它。保留线程池方案：最简单，工具里偶尔发一个请求、不需要取消的地方可以直接用。
+- 这个结论会用来重写主线 1.1：`Post` 变成返回 `awaitable<Response>` 的函数，背后用 curl 线程方案；下一章 llm-1.3 把它抽成 `Transport` 接口。
 
 **其他的取舍：**
 
 - 为什么不共享连接缓存：见第 8 节，`Share` 只共享 DNS 缓存和 TLS 会话。在本章的数据里 `Share` 也没有带来可见的差别。
-- 为什么 HTTP/2 不是选择的理由：几个到十几个请求时它对总耗时没有影响（回答时间远大于建立连接的时间），影响的是连接数（12 变 1），而 A 和 B 本来就能享受到。请求更多时两家服务表现不同（5.6）：Anthropic 上 HTTP/2 不慢，300 个并发时明显更快；OpenRouter 上 100 个并发时一条连接的尾部变慢。所以默认让 libcurl 自己选（`Version::kAny`，服务支持就用 HTTP/2），发现某个服务有问题时再退回 HTTP/1.1。
+- 为什么 HTTP/2 不是选择的理由：几个到十几个请求时它对总耗时没有影响（回答时间远大于建立连接的时间），影响的是连接数（12 变 1），而 curl 线程方案和 socket_action 方案本来就能享受到。请求更多时两家服务表现不同（5.6）：Anthropic 上 HTTP/2 不慢，300 个并发时明显更快；OpenRouter 上 100 个并发时一条连接的尾部变慢。所以默认让 libcurl 自己选（`Version::kAny`，服务支持就用 HTTP/2），发现某个服务有问题时再退回 HTTP/1.1。
 - libcurl 8.23.0，vcpkg 的 `curl[http2]` 带上 nghttp2 1.71.0，Windows 上 TLS 用 Schannel。HTTP/2 版本代码在 libcurl 里是 `CURL_HTTP_VERSION_2_0 = 3`，不是 2。
 - 被否决的：libcurl 的 `curl_multi_socket_action` 配 libuv（没有协程支持，也不是我们的事件循环）；单独为每个请求开线程（线程数跟着请求数涨）；`Share` 加 `CURL_LOCK_DATA_CONNECT`（崩溃）。
 - 限流（429）没有测，也就没有测“12 个同时发会不会被服务限流”：本章的 12 个请求在两家服务上都没有遇到限流。线程池或 multi 的并发数要不要设上限，留给 llm-1.8（重试、限流与降级）。
@@ -862,13 +862,13 @@ Anthropic：
 
 **明文 http 上设 `CURLOPT_PIPEWAIT` 会把请求串起来。** 设了它，后面的请求会等第一个请求的连接；HTTPS 下握手之后就知道服务端支不支持 HTTP/2，等待是值得的，明文 http 没有握手，libcurl 要等第一个答案回来才知道，等待只会让请求排队：8 个各 200 毫秒的请求用了 421 毫秒，而不是 218 毫秒。所以 `PIPEWAIT` 只在 HTTPS 且没有强制 HTTP/1.1 时设（`WaitForMultiplexing`）。
 
-**Windows 上连接失败不是“可写”。** B 里监视套接字时，连接被拒绝或不可达，在 Windows 上出现在 select 的异常集合里，而不是可写。不额外 `async_wait(wait_error)`，失败要等 libcurl 自己的连接超时。症状是：一个指向没人监听的端口的请求，要等 10 秒才失败，其他请求都正常。
+**Windows 上连接失败不是“可写”。** socket_action 方案里监视套接字时，连接被拒绝或不可达，在 Windows 上出现在 select 的异常集合里，而不是可写。不额外 `async_wait(wait_error)`，失败要等 libcurl 自己的连接超时。症状是：一个指向没人监听的端口的请求，要等 10 秒才失败，其他请求都正常。
 
-**`release()` 套接字，不要让 Asio 关闭它。** B 里套接字归 libcurl 所有。libcurl 说“不用监视了”（`CURL_POLL_REMOVE`）时，要对 Asio 的 `tcp::socket` 调用 `release()`，不能直接销毁它，否则同一个套接字会被关两次。
+**`release()` 套接字，不要让 Asio 关闭它。** socket_action 方案里套接字归 libcurl 所有。libcurl 说“不用监视了”（`CURL_POLL_REMOVE`）时，要对 Asio 的 `tcp::socket` 调用 `release()`，不能直接销毁它，否则同一个套接字会被关两次。
 
 **在 libcurl 的回调里不能再调用 libcurl。** `OnTimer` 要求“立刻处理”（0 毫秒）时，要把 `curl_multi_socket_action` `post` 出去，不能在回调里直接调。`Done` 里恢复协程也用 `post` 而不是 `dispatch`，原因同上。
 
-**协程恢复要回到协程自己的执行器。** A 的结果是在 curl 线程里得到的，不能在那里直接恢复协程，否则协程会在 curl 线程上运行。`Suspend` 里把恢复的动作投回协程所在的执行器。
+**协程恢复要回到协程自己的执行器。** curl 线程方案的结果是在 curl 线程里得到的，不能在那里直接恢复协程，否则协程会在 curl 线程上运行。`Suspend` 里把恢复的动作投回协程所在的执行器。
 
 **`std::min` 在 Windows 上要加括号。** `curl/curl.h` 会间接包含 `windows.h`，它定义了 `min` 和 `max` 宏，`std::min(a, b)` 要写成 `(std::min)(a, b)`。
 
@@ -880,13 +880,13 @@ Anthropic：
 
 ## 9. 练习
 
-1. 把 `PoolClient` 的线程数加到 12，在 Anthropic 上重测，它能追上 A 吗？代价是什么（线程数、连接数）？
+1. 把 `PoolClient` 的线程数加到 12，在 Anthropic 上重测，它能追上 curl 线程方案吗？代价是什么（线程数、连接数）？
 2. 给 `CurlThreadClient` 加一个同时在途请求数的上限（超过的排队），用 `CURLMOPT_MAX_HOST_CONNECTIONS` 和 `CURLMOPT_MAX_CONCURRENT_STREAMS` 对比，看哪种更适合限制对同一个服务的并发。
 3. 把 `Share` 加上 `CURL_LOCK_DATA_CONNECT` 之后，用 `curl_bench local 20 50 4 1` 连续运行几十次，复现崩溃。再试着只共享 DNS，只共享 TLS 会话，看哪种有可见的收益。
 4. 在 `SocketClient` 里去掉 `wait_error`，写一个测试复现“连接被拒绝要等 10 秒”。
 5. `idle` 只测到 90 秒。把间隔加到 5 分钟、15 分钟，看哪一家先关连接，再用 `Session` 发请求，看 libcurl 是不是悄悄重试了一条新的。
 6. OpenRouter 在 100 个并发时一条 HTTP/2 连接的尾部变慢，把 `CURLOPT_VERBOSE` 的输出和每个流的收发时间记下来，看慢的流是在发出请求之前就在等，还是在等回答。试着 N 取 60、80、120，看变慢从哪里开始。
-7. 给三个客户端加一个“同时在途的请求数”的统计（原子计数器），在 20 个请求的本机基准里确认 C 同时在途不超过 4，A 和 B 是 20。
+7. 给三个客户端加一个“同时在途的请求数”的统计（原子计数器），在 20 个请求的本机基准里确认线程池方案同时在途不超过 4，curl 线程方案和 socket_action 方案是 20。
 
 ## 10. 支线
 
