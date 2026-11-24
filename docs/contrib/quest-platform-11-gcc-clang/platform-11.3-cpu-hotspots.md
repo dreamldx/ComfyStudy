@@ -3,7 +3,7 @@
 - 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/platform-11-gcc-clang`（支线不打 tag，用 `git log quest/platform-11-gcc-clang --grep="^chapter-platform-11.3"` 定位本章提交）
 - 所属支线：[支线 platform-11：GCC 与 Clang 的编译器性能优化](README.md)
 - 可开始于：主线 [11.2 超分节点](../../tutorial/phase-11-onnxruntime/11.2-upscale-node.md)
-- 一句话目标：主线程序自己的代码（JSON 与命令行解析、句柄与节点系统）、权重加载（safetensors、GGUF）、OpenCV 图像处理、ggml 的 CPU 后端；OpenCV 的源码版本自行按 platform-10.2 的方法构建，不使用 platform-10 的分支
+- 一句话目标：主线程序自己的代码（JSON 与命令行解析、句柄与节点系统）、权重加载（safetensors、GGUF）、OpenCV 图像处理、ggml 的 CPU 后端；OpenCV 用 vcpkg 里的版本
 
 ## 1. 本章目标与成果
 

@@ -1,9 +1,9 @@
-# llm-1.6 重试、限流与降级
+# llm-1.4 流式输出（SSE）
 
-- 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/llm-01-llm-app-engineering`（支线不打 tag，用 `git log quest/llm-01-llm-app-engineering --grep="^chapter-llm-1.6"` 定位本章提交）
+- 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/llm-01-llm-app-engineering`（支线不打 tag，用 `git log quest/llm-01-llm-app-engineering --grep="^chapter-llm-1.4"` 定位本章提交）
 - 所属支线：[支线 llm-01：LLM 应用工程](README.md)
 - 可开始于：主线 [1.2 LLM 双协议与 Provider 抽象](../../tutorial/phase-01-llm-chat/1.2-llm-providers.md)
-- 一句话目标：指数退避加抖动，尊重服务端的限流提示，主 Provider 持续失败时切到备用 Provider
+- 一句话目标：解析服务端推送的事件流，边收边显示；Discord 里用限速的消息编辑模拟打字效果
 
 ## 1. 本章目标与成果
 
@@ -15,7 +15,7 @@
 
 ## 3. 本章改动
 
-待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-llm-1.6-retry-fallback:` 开头，可用 `git show --stat` 查看。）
+待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-llm-1.4-streaming-sse:` 开头，可用 `git show --stat` 查看。）
 
 ## 4. 关键代码讲解
 

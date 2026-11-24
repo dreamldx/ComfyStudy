@@ -1,9 +1,9 @@
-# platform-10.4 ggml 与 stable-diffusion.cpp
+# platform-10.4 ONNX Runtime
 
 - 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/platform-10-source-build`（支线不打 tag，用 `git log quest/platform-10-source-build --grep="^chapter-platform-10.4"` 定位本章提交）
 - 所属支线：[支线 platform-10：源码构建与官方版本对比（Linux）](README.md)
-- 可开始于：主线 [13.2 后端接口](../../tutorial/phase-13-sdcpp-backend/13.2-backend-interface.md)
-- 一句话目标：对比构建选项：官方 CI 的选项与针对目标 GPU 架构、本机 CPU 优化的选项；Linux 上官方 CUDA 产物是否有裸二进制（而不是 Docker 镜像）还没核实
+- 可开始于：主线 [11.2 超分节点](../../tutorial/phase-11-onnxruntime/11.2-upscale-node.md)
+- 一句话目标：官方 GPU 1.32.0 包对比同版本源码构建（CUDA 执行器，针对目标架构，cuDNN 9）；对比 11.2 超分节点的推理耗时、可用算子与执行器、包大小
 
 ## 1. 本章目标与成果
 
@@ -15,7 +15,7 @@
 
 ## 3. 本章改动
 
-待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-platform-10.4-ggml-sdcpp:` 开头，可用 `git show --stat` 查看。）
+待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-platform-10.4-onnxruntime:` 开头，可用 `git show --stat` 查看。）
 
 ## 4. 关键代码讲解
 

@@ -1,9 +1,9 @@
-# platform-10.2 OpenCV
+# platform-10.2 libtorch
 
 - 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/platform-10-source-build`（支线不打 tag，用 `git log quest/platform-10-source-build --grep="^chapter-platform-10.2"` 定位本章提交）
 - 所属支线：[支线 platform-10：源码构建与官方版本对比（Linux）](README.md)
 - 可开始于：主线 [11.2 超分节点](../../tutorial/phase-11-onnxruntime/11.2-upscale-node.md)
-- 一句话目标：三个对照：Debian 的 apt 版 4.10.0、上游 4.14.0 按默认选项源码构建、上游 4.14.0 打开 CPU 优化（如 AVX2 / AVX512 分发）构建；对比 `imread`、`resize`、`cvtColor` 等耗时，以及编解码器与模块支持
+- 一句话目标：官方压缩包（2.13.0 或 2.14.1，cu130）对比同版本源码构建（只针对目标 GPU 架构、关闭用不到的组件）；对比 UNet 单步耗时与显存、二进制大小、构建耗时，以及功能差异
 
 ## 1. 本章目标与成果
 
@@ -15,7 +15,7 @@
 
 ## 3. 本章改动
 
-待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-platform-10.2-opencv:` 开头，可用 `git show --stat` 查看。）
+待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-platform-10.2-libtorch:` 开头，可用 `git show --stat` 查看。）
 
 ## 4. 关键代码讲解
 

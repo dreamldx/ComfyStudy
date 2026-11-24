@@ -19,7 +19,7 @@
 - 一个基准程序 `curl_bench`，在本机服务器和真实的模型服务上测各种发送方式。
 - 结论：机器人默认用“线程池加 easy”。理由和数据在第 2、5、7 节。
 
-本章只测了 POST 一个完整回答的情形，没有做限流（429）的实验；流式输出留给 llm-1.2。
+本章只测了 POST 一个完整回答的情形，没有做限流（429）的实验；流式输出留给 llm-1.4。
 
 ## 2. 背景与概念
 
@@ -234,7 +234,7 @@ TEST(PostMany, TheRequestsRunAtTheSameTimeButNotMoreThanAllowed) {
 
 ```
 
-multi 还有另一种驱动方式 `curl_multi_socket_action`：libcurl 通过回调告诉你要监视哪些套接字和什么时候超时，你把它们放进自己的事件循环（epoll、IOCP、asio 之类），事件到了再通知 libcurl。本章没有用它，因为机器人的并发不需要和别的事件循环合在一起；`curl_multi_poll` 已经够用。
+multi 还有另一种驱动方式 `curl_multi_socket_action`：libcurl 通过回调告诉你要监视哪些套接字和什么时候超时，你把它们放进自己的事件循环（epoll、IOCP、asio 之类），事件到了再通知 libcurl。本章没有用它，因为机器人的并发不需要和别的事件循环合在一起；`curl_multi_poll` 已经够用。把它接进 Boost.Asio 见 llm-1.3。
 
 ### 4.4 share：让多个线程的句柄共享缓存
 
@@ -469,7 +469,7 @@ multi, 4 in flight                       1405          448            1        1
 
 **被否决的方案。**
 
-- `curl_multi_socket_action`：和自己的事件循环集成时才需要，这里用不上。
+- `curl_multi_socket_action`：和自己的事件循环集成时才需要，这里用不上，见 llm-1.3。
 - 共享 `CURL_LOCK_DATA_CONNECT`：崩溃，见第 8 节。
 - 为了测 HTTP/2 在本机起一个 TLS 加 HTTP/2 的服务器：cpp-httplib 不说 HTTP/2，所以 HTTP/2 只在真实服务上测，数据不能完全复现。
 
@@ -512,4 +512,4 @@ multi, 4 in flight                       1405          448            1        1
 
 ## 11. 下一章预告
 
-下一章 llm-1.2 是流式输出（SSE）：不等整个回答，边收边显示。它的起点是主线 1.2（LLM 双协议与 Provider 抽象），不依赖本章；但流式响应会长时间占用一条连接，选发送方式时本章的结论仍然有用。
+下一章 llm-1.2 讲 Boost.Asio 的事件循环、定时器和 C++20 协程；llm-1.3 再把 libcurl 的 multi 接进去，两种驱动方式都做。之后的 llm-1.4 是流式输出（SSE）：不等整个回答，边收边显示，会用到这套协程和定时器。
