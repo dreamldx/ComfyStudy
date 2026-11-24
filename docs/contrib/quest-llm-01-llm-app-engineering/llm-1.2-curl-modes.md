@@ -7,7 +7,7 @@
 
 ## 1. 本章目标与成果
 
-机器人要一次问很多个问题：画图前要让模型改写提示词，Discord 里可能有好几个人同时发话，一个人的一轮对话里也可能连发几个请求。主线 1.1 的 `http::Post` 一次只发一个请求，每次还新建一个 libcurl 句柄。这一章把 libcurl 的三种用法，和把它们接进事件循环的三种做法，放在同一批请求上量一遍，再决定机器人用哪一种。
+机器人要一次问很多个问题：画图前要让模型改写提示词，Discord 里可能有好几个人同时发话，一个人的一轮对话里也可能连发几个请求。一次只发一个请求、每次还新建一个 libcurl 句柄的做法，在这里是撑不住的。这一章把 libcurl 的三种用法，和把它们接进事件循环的三种做法，放在同一批请求上量一遍，再决定机器人用哪一种。主线 1.1 的 `Transport`（`MakeCurlTransport()`）用的就是这里比较出来的结论，这一章讲的是结论是怎么来的。
 
 做完后你会得到：
 
@@ -21,7 +21,7 @@
 - 一个基准程序 `curl_bench`：本机服务器上的对比，真实服务（OpenRouter、Anthropic）上的对比，以及四个只读的探测（三家服务对 HTTP/2 怎么说、空闲的连接活多久、流式请求在 HTTP/2 下怎么到达、12 到 300 个请求同时在途时多路复用怎么样）。
 - 结论：机器人默认用 curl 线程方案，理由和数据在第 6、7 节。
 
-本章只测了 POST 一个完整回答的情形，没有做限流（429）的实验；流式输出留给 llm-1.3；`Transport` 接口放进重写后的主线 1.1。
+本章只测了 POST 一个完整回答的情形，没有做限流（429）的实验；流式输出留给 llm-1.3；`Transport` 接口在主线 1.1。
 
 ## 2. 背景与概念
 
@@ -64,7 +64,7 @@
 
 ## 3. 本章改动
 
-本章的代码在支线分支 `quest/llm-01-llm-app-engineering` 上，不合入 main，也不打 tag。提交信息以 `chapter-llm-1.2-curl-modes:` 开头，`git log quest/llm-01-llm-app-engineering --grep="^chapter-llm-1.2"` 可以找到。本章有五个提交：
+本章的代码在支线分支 `quest/llm-01-llm-app-engineering` 上，不合入 main，也不打 tag。提交信息以 `chapter-llm-1.2-curl-modes:` 开头，`git log quest/llm-01-llm-app-engineering --grep="^chapter-llm-1.2"` 可以找到。本章有七个提交：
 
 1. 积木：
    - `vcpkg.json`：curl 加上 `http2` 特性（会多装 nghttp2）。
@@ -75,11 +75,13 @@
    - `src/curl_support.h`：几个文件共用的 libcurl 辅助代码，从 `http_client.cpp` 里搬出来。
    - `src/async_http.h`、`src/async_http.cpp`：`PoolClient`、`CurlThreadClient`、`SocketClient`。
    - `tests/test_async_http.cpp`：23 个测试。
-   - `CMakeLists.txt`：`async_http.cpp` 进了核心库，核心库链接 `comfystudy_asio`；`scripts/check-build.ps1`：编译和链接命令的数量随之改成 24 和 15。
+   - `CMakeLists.txt`：`async_http.cpp` 进了核心库，核心库链接 `comfystudy_asio`；`scripts/check-build.ps1`：编译和链接命令的数量随之改成 25 和 15。
 4. 基准加上三个协程客户端和三个探测：`curl_bench probe`、`idle`、`stream`。
 5. 多路复用的专门测量：`curl_bench mux`。
+6. 把三个协程客户端在 README 和基准里的代号换成名字。
+7. README 里不再描述旧的主线 `Post`（主线 1.1 现在是 `Transport`）。
 
-每个提交同时更新了分支根目录的 `README.md`。主线 1.1 的 `http::Post` 的调用方式没有变，已有的测试照常通过。
+每个提交同时更新了分支根目录的 `README.md`。这些提交接在重写后的主线 1.1 上：`Transport`、`MakeCurlTransport` 和它们的测试原样保留，本章的代码和它们并排放着，不替换它们。本章留下一个阻塞的 `http::Post`（每次新建句柄，一次发一个请求），测试和基准要用它做基线。
 
 ## 4. 关键代码讲解
 
@@ -87,7 +89,7 @@
 
 `Timing` 放在 `Response` 里，每个请求都带着：
 
-<!-- src: src/http_client.h#L23-L35 -->
+<!-- src: src/http_client.h#L43-L55 -->
 ```cpp
 // How long each phase of a request took, as libcurl reports it. The times are cumulative: each one
 // counts from the start of the request, so the time a phase took on its own is the difference to
@@ -130,9 +132,9 @@ inline Response CollectResponse(CURL* handle, std::string body) {
 
 ### 4.2 easy：保留句柄就能复用连接
 
-`Session` 把一个句柄留在对象里，连接在句柄的缓存里，下一次请求同一个主机时直接用。主线 1.1 的 `Post` 现在只是“新建一个 `Session`，用一次”：
+`Session` 把一个句柄留在对象里，连接在句柄的缓存里，下一次请求同一个主机时直接用。本章留下的阻塞版 `http::Post` 只是“新建一个 `Session`，用一次”：
 
-<!-- src: src/http_client.cpp#L16-L47 -->
+<!-- src: src/http_client.cpp#L18-L31 -->
 ```cpp
 struct Session::Impl {
   // The Transfer comes first, so it is destroyed AFTER the handle: while a handle is cleaned up,
@@ -148,24 +150,6 @@ Session::Session(Options options) : impl_(std::make_unique<Impl>()) {
   if (!impl_->easy) throw Error("curl_easy_init failed");
   impl_->options = options;
 }
-
-Session::~Session() = default;
-
-Response Session::Post(const std::string& url, const std::vector<Header>& headers,
-                       const std::string& body) {
-  Transfer& transfer = impl_->transfer;
-  CURL* handle = impl_->easy.get();
-  transfer.Configure(handle, url, headers, body, impl_->options);
-  const CURLcode code = curl_easy_perform(handle);
-  if (code != CURLE_OK) throw Error(transfer.Failure(code));
-  return CollectResponse(handle, std::move(transfer.response_body));
-}
-
-Response Post(const std::string& url, const std::vector<Header>& headers, const std::string& body,
-              const Options& options) {
-  Session session(options);  // a new handle: nothing is kept for the next call
-  return session.Post(url, headers, body);
-}
 ```
 
 `Impl` 里 `transfer` 写在 `easy` 前面是有原因的，见第 8 节。
@@ -174,7 +158,7 @@ Response Post(const std::string& url, const std::vector<Header>& headers, const 
 
 `PostMany` 的主循环是 multi 接口的标准写法：`curl_multi_perform` 推进所有传输，`curl_multi_info_read` 取出完成的，`curl_multi_poll` 在没事可做时睡觉。每个句柄用 `CURLOPT_PRIVATE` 记着自己对应第几个请求，完成的消息里就能找回来。
 
-<!-- src: src/http_client.cpp#L156-L197 -->
+<!-- src: src/http_client.cpp#L158-L199 -->
 ```cpp
   start_more();
   while (!running.empty()) {
@@ -226,7 +210,7 @@ Response Post(const std::string& url, const std::vector<Header>& headers, const 
 
 `Share` 共享 DNS 缓存和 TLS 会话，不共享连接缓存。多线程使用时 libcurl 会回调加锁和解锁，锁由我们提供：
 
-<!-- src: src/http_client.cpp#L74-L88 -->
+<!-- src: src/http_client.cpp#L76-L90 -->
 ```cpp
 Share::Share() : impl_(std::make_unique<Impl>()) {
   EnsureGlobalInit();
@@ -366,7 +350,7 @@ asio::awaitable<Response> CurlThreadClient::Post(PostRequest request) {
 
 curl 线程这一侧的循环：每一轮先取出新请求和要取消的请求，加进 multi 句柄或摘掉，然后推进传输、收结果，最后在 `curl_multi_poll` 里睡觉，直到有传输要处理，或者被 `curl_multi_wakeup` 叫醒：
 
-<!-- src: src/async_http.cpp#L167-L204 -->
+<!-- src: src/async_http.cpp#L167-L177 -->
 ```cpp
   void Run() {
     for (;;) {
@@ -379,33 +363,6 @@ curl 线程这一侧的循环：每一轮先取出新请求和要取消的请求
         cancelled.swap(cancels);
         stop = stopping;
       }
-      for (auto& job : added) Add(std::move(job));
-      for (const std::uint64_t id : cancelled) {
-        const auto it = running.find(id);
-        if (it != running.end()) Finish(it, Cancelled(), std::nullopt);
-      }
-      if (stop) {
-        while (!running.empty()) {
-          try {
-            throw Error("the client was destroyed while the request was running");
-          } catch (const Error&) {
-            Finish(running.begin(), std::current_exception(), std::nullopt);
-          }
-        }
-        return;
-      }
-
-      int still_running = 0;
-      const CURLMcode performed = curl_multi_perform(multi.get(), &still_running);
-      if (performed != CURLM_OK) {
-        while (!running.empty()) {
-          try {
-            throw Error(std::string("curl_multi_perform failed: ") + curl_multi_strerror(performed));
-          } catch (const Error&) {
-            Finish(running.begin(), std::current_exception(), std::nullopt);
-          }
-        }
-      }
 ```
 
 `curl_multi_wakeup` 是 libcurl 里少数明确可以从别的线程调用的函数，curl 线程方案的线程安全就靠它加一把保护队列的锁。收完的传输在下半部分处理，和 `PostMany` 里一样。
@@ -414,7 +371,7 @@ curl 线程这一侧的循环：每一轮先取出新请求和要取消的请求
 
 libcurl 通过两个回调把工作交给我们：
 
-<!-- src: src/async_http.cpp#L312-L354 -->
+<!-- src: src/async_http.cpp#L312-L338 -->
 ```cpp
   static int OnSocket(CURL*, curl_socket_t s, int what, void* user, void*) {
     auto* self = static_cast<Impl*>(user);
@@ -441,22 +398,6 @@ libcurl 通过两个回调把工作交给我们：
     sock->want_read = (what & CURL_POLL_IN) != 0;
     sock->want_write = (what & CURL_POLL_OUT) != 0;
     self->Watch(s, sock);
-    return 0;
-  }
-
-  // libcurl: "wake me in timeout_ms" (-1: no need to).
-  static int OnTimer(CURLM*, long timeout_ms, void* user) {
-    auto* self = static_cast<Impl*>(user);
-    if (timeout_ms < 0) {
-      self->timer.cancel();
-    } else if (timeout_ms == 0) {
-      asio::post(self->executor, [self] { self->Act(CURL_SOCKET_TIMEOUT, 0); });
-    } else {
-      self->timer.expires_after(std::chrono::milliseconds(timeout_ms));
-      self->timer.async_wait([self](const boost::system::error_code& ec) {
-        if (!ec) self->Act(CURL_SOCKET_TIMEOUT, 0);
-      });
-    }
     return 0;
   }
 ```
@@ -842,7 +783,7 @@ Anthropic：
 - 对比线程池方案：同样 12 个请求，线程池方案受线程数限制，4 个线程要 3 轮，是 curl 线程方案的两倍时间；要追上 curl 线程方案就得开 12 个线程。curl 线程方案只多一个线程，请求数不受限。更重要的是 线程池方案不能取消一个正在进行的请求：Discord 里用户发 `/cancel` 或者要“停”，请求还要在池线程里一直等到它自己结束或超时，那个线程在这段时间里什么也干不了。
 - 对比 socket_action 方案：curl 线程方案和 socket_action 方案在所有测量里一样快。socket_action 方案少一个线程，但代码多约三分之一，而且有平台相关的坑（Windows 上要多等一个事件），必须只在事件循环线程上用。curl 线程方案的线程安全靠 libcurl 明确保证可以跨线程调用的 `curl_multi_wakeup`，坑少。省下的一个线程不值得。
 - 保留 socket_action 方案：如果以后想要进程里一个额外线程都没有，socket_action 方案是可用的，测试已经覆盖了它。保留线程池方案：最简单，工具里偶尔发一个请求、不需要取消的地方可以直接用。
-- 这个结论会用来重写主线 1.1：`Post` 变成返回 `awaitable<Response>` 的函数，背后用 curl 线程方案；同时把它抽成 `Transport` 接口，取消、错误分类、日志脱敏和契约测试都在那里讲。
+- 主线 1.1 已经按这个结论写好：`Transport` 接口的实现 `MakeCurlTransport()` 就是 curl 线程方案，只是更精简：没有各阶段耗时、`Share` 和 HTTP 版本选项；取消、错误分类、日志脱敏和契约测试都在主线 1.1 里讲。本章的 `CurlThreadClient` 是它的完整版，带着对比用的测量。
 
 **其他的取舍：**
 

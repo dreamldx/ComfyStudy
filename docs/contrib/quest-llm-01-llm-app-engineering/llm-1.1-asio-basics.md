@@ -23,7 +23,7 @@
 - `demo/asio_demo.cpp`，七个子命令，每个演示一件事。
 - `tests/test_asio_basics.cpp`，19 个测试。需要控制时间的测试都用手动推进的时钟，不依赖真实时间。
 
-本章不连网络。一个 HTTP 请求怎么放进事件循环，是 llm-1.2 的内容。
+本章没有网络。一个 HTTP 请求怎么放进事件循环，是 llm-1.2 的内容。
 
 ## 2. 背景与概念
 
@@ -409,29 +409,20 @@ git switch quest/llm-01-llm-app-engineering
 .\scripts\dev.ps1 cmake --build --preset windows-debug
 ```
 
-第一次配置会让 vcpkg 装 `boost-asio`，大约一分钟。然后逐个运行演示的子命令（下面的数字来自 Debug 构建）。同样是三步，每步等 100 毫秒，先是回调写法，再是协程写法：
+第一次配置会让 vcpkg 装 `boost-asio`，大约一分钟。然后逐个运行演示的子命令（下面的数字来自 Debug 构建）：
 
 ```powershell
 build\windows-debug\bin\asio_demo.exe callbacks
-```
-
-```
-step 1 at 100 ms
-step 2 at 207 ms
-step 3 at 316 ms
-```
-
-```powershell
 build\windows-debug\bin\asio_demo.exe coroutines
 ```
 
 ```
-step 1 at 112 ms
-step 2 at 222 ms
-step 3 at 330 ms
+step 1 at 100 ms        step 1 at 112 ms
+step 2 at 207 ms        step 2 at 222 ms
+step 3 at 316 ms        step 3 at 330 ms
 ```
 
-两种写法做的是同一件事。每一步比 100 毫秒多出七到十几毫秒，是 Windows 定时器的精度（约 15.6 毫秒一档）造成的，不是代码的开销。
+左边是回调版，右边是协程版（实际是依次输出的）。两种写法做的是同一件事：每一步等 100 毫秒。每一步比 100 毫秒多出七到十几毫秒，是 Windows 定时器的精度（约 15.6 毫秒一档）造成的，不是代码的开销。
 
 ```powershell
 build\windows-debug\bin\asio_demo.exe concurrent 20 300
