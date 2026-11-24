@@ -2,7 +2,7 @@
 
 - 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/llm-01-llm-app-engineering`（支线不打 tag，用 `git log quest/llm-01-llm-app-engineering --grep="^chapter-llm-1.9"` 定位本章提交）
 - 所属支线：[支线 llm-01：LLM 应用工程](README.md)
-- 可开始于：主线 [1.7 LLM 视觉输入](../../tutorial/phase-01-llm-chat/1.7-vision-input.md)
+- 可开始于：主线 [1.8 LLM 视觉输入](../../tutorial/phase-01-llm-chat/1.8-vision-input.md)
 - 一句话目标：演示图片和用户文本里藏指令的攻击，用工具白名单、危险工具二次确认和输出隔离来防御
 
 ## 1. 本章目标与成果
@@ -11,7 +11,7 @@
 
 ## 2. 背景与概念
 
-待写。
+待写。（要点：危险工具的二次确认沿用主线 1.4 的副作用分类，确认的交互见主线 1.7。）
 
 ## 3. 本章改动
 

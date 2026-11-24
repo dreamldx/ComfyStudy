@@ -1,9 +1,9 @@
-# llm-2.7 节点图校验与自我纠错
+# llm-2.7 MCP 服务端
 
 - 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/llm-02-agent-advanced`（支线不打 tag，用 `git log quest/llm-02-agent-advanced --grep="^chapter-llm-2.7"` 定位本章提交）
 - 所属支线：[支线 llm-02：Agent 进阶](README.md)
-- 可开始于：主线 [2.6 调用记录与工作流导出](../../tutorial/phase-02-opencv-handles/2.6-workflow-recording.md)
-- 一句话目标：在执行前校验节点图并给出可读的错误，把错误回灌给 LLM 让它自己修图
+- 可开始于：主线 [1.4 工具运行时：注册、校验与执行](../../tutorial/phase-01-llm-chat/1.4-tool-runtime.md)
+- 一句话目标：把本项目的节点和 Skill 作为 MCP 服务暴露出去，让别的程序也能调用
 
 ## 1. 本章目标与成果
 
@@ -15,7 +15,7 @@
 
 ## 3. 本章改动
 
-待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-llm-2.7-graph-self-repair:` 开头，可用 `git show --stat` 查看。）
+待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-llm-2.7-mcp-server:` 开头，可用 `git show --stat` 查看。）
 
 ## 4. 关键代码讲解
 

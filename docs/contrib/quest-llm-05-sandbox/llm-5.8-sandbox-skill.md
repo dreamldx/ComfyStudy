@@ -2,7 +2,7 @@
 
 - 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/llm-05-sandbox`（支线不打 tag，用 `git log quest/llm-05-sandbox --grep="^chapter-llm-5.8"` 定位本章提交）
 - 所属支线：[支线 llm-05：沙箱与脚本编排](README.md)
-- 可开始于：主线 [1.4 Skill 机制：按需加载的能力](../../tutorial/phase-01-llm-chat/1.4-skills.md)
+- 可开始于：主线 [1.5 Skill 机制：按需加载的能力](../../tutorial/phase-01-llm-chat/1.5-skills.md)
 - 一句话目标：把计算和编排整理成 Skill，按需装载，并声明它需要的权限
 
 ## 1. 本章目标与成果

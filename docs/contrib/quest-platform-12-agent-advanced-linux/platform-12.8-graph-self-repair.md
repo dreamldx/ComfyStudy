@@ -1,9 +1,9 @@
-# platform-12.10 让 LLM 查自己的历史
+# platform-12.8 节点图校验与自我纠错
 
-- 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/platform-12-agent-advanced-linux`（支线不打 tag，用 `git log quest/platform-12-agent-advanced-linux --grep="^chapter-platform-12.10"` 定位本章提交）
+- 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/platform-12-agent-advanced-linux`（支线不打 tag，用 `git log quest/platform-12-agent-advanced-linux --grep="^chapter-platform-12.8"` 定位本章提交）
 - 所属支线：[支线 platform-12：Agent 进阶（Linux 完整版）](README.md)
 - 可开始于：主线 [2.7 视觉反馈闭环](../../tutorial/phase-02-opencv-handles/2.7-vision-feedback-loop.md)；并需先完成支线 llm-02（`quest/llm-02-agent-advanced`）与 platform-01
-- 一句话目标：Linux 版 llm-2.10：与原章节一致，在 Linux 上构建并运行验证，记录与 Windows 的差异
+- 一句话目标：Linux 版 llm-2.8：与原章节一致，在 Linux 上构建并运行验证，记录与 Windows 的差异
 
 ## 1. 本章目标与成果
 
@@ -15,7 +15,7 @@
 
 ## 3. 本章改动
 
-待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-platform-12.10-history-tool:` 开头，可用 `git show --stat` 查看。）
+待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-platform-12.8-graph-self-repair:` 开头，可用 `git show --stat` 查看。）
 
 ## 4. 关键代码讲解
 

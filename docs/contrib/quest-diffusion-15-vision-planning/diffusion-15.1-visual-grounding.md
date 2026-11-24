@@ -2,7 +2,7 @@
 
 - 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/diffusion-15-vision-planning`（支线不打 tag，用 `git log quest/diffusion-15-vision-planning --grep="^chapter-diffusion-15.1"` 定位本章提交）
 - 所属支线：[支线 diffusion-15：视觉定位与布局规划](README.md)
-- 可开始于：主线 [1.7 LLM 视觉输入](../../tutorial/phase-01-llm-chat/1.7-vision-input.md)
+- 可开始于：主线 [1.8 LLM 视觉输入](../../tutorial/phase-01-llm-chat/1.8-vision-input.md)
 - 一句话目标：让视觉模型返回物体的边界框：约定坐标格式（像素还是归一化），对比不同模型的输出差异与准确度，并校验返回值
 
 ## 1. 本章目标与成果

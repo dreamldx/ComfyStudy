@@ -2,7 +2,7 @@
 
 - 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/llm-05-sandbox`（支线不打 tag，用 `git log quest/llm-05-sandbox --grep="^chapter-llm-5.5"` 定位本章提交）
 - 所属支线：[支线 llm-05：沙箱与脚本编排](README.md)
-- 可开始于：主线 [1.3 Tool Calling 循环](../../tutorial/phase-01-llm-chat/1.3-tool-calling.md)
+- 可开始于：主线 [1.4 工具运行时：注册、校验与执行](../../tutorial/phase-01-llm-chat/1.4-tool-runtime.md)
 - 一句话目标：让脚本在沙箱里调用受控的工具接口，例如批量出图、对比参数网格，把几十轮对话压成一轮
 
 ## 1. 本章目标与成果
@@ -11,7 +11,7 @@
 
 ## 2. 背景与概念
 
-待写。
+待写。（要点：脚本里调用的工具走主线 1.4 的工具运行时，副作用分类、超时、截断同样生效。）
 
 ## 3. 本章改动
 

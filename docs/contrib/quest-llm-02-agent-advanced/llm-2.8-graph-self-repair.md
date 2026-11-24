@@ -1,9 +1,9 @@
-# llm-2.5 MCP 客户端
+# llm-2.8 节点图校验与自我纠错
 
-- 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/llm-02-agent-advanced`（支线不打 tag，用 `git log quest/llm-02-agent-advanced --grep="^chapter-llm-2.5"` 定位本章提交）
+- 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/llm-02-agent-advanced`（支线不打 tag，用 `git log quest/llm-02-agent-advanced --grep="^chapter-llm-2.8"` 定位本章提交）
 - 所属支线：[支线 llm-02：Agent 进阶](README.md)
-- 可开始于：主线 [1.3 Tool Calling 循环](../../tutorial/phase-01-llm-chat/1.3-tool-calling.md)
-- 一句话目标：实现 Model Context Protocol 的客户端（基于标准输入输出的 JSON-RPC），把外部工具服务当作 Skill 装载
+- 可开始于：主线 [2.6 调用记录与工作流导出](../../tutorial/phase-02-opencv-handles/2.6-workflow-recording.md)
+- 一句话目标：在执行前校验节点图并给出可读的错误，把错误回灌给 LLM 让它自己修图
 
 ## 1. 本章目标与成果
 
@@ -15,7 +15,7 @@
 
 ## 3. 本章改动
 
-待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-llm-2.5-mcp-client:` 开头，可用 `git show --stat` 查看。）
+待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-llm-2.8-graph-self-repair:` 开头，可用 `git show --stat` 查看。）
 
 ## 4. 关键代码讲解
 

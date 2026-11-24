@@ -23,7 +23,7 @@ Discord 机器人应用与令牌；OpenAI 或 Anthropic 的 API 密钥。详见 
 | 阶段 | 主题 | 类型 | 章节数 | 完成标准 |
 |---|---|---|---|---|
 | 0 | [工具链与骨架](phase-00-toolchain/README.md) | 主线 | 6 | 运行程序时输出已加载的配置项名称，并能列出程序加载的每个 DLL 的位置、版本和所属的 vcpkg 包 |
-| 1 | [LLM 与对话通道](phase-01-llm-chat/README.md) | 主线 | 8 | 在 Discord 里与机器人对话，它能调用玩具工具并回答，也能看懂用户发来的图片，重启后能接着聊 |
+| 1 | [LLM 与对话通道](phase-01-llm-chat/README.md) | 主线 | 9 | 在 Discord 里与机器人对话，它能调用玩具工具并回答，也能看懂用户发来的图片，重启后能接着聊 |
 | 2 | [OpenCV：句柄系统与图像处理](phase-02-opencv-handles/README.md) | 主线 | 7 | 在 Discord 里说“把这张图缩小一半并加模糊”，机器人自己装载 Skill、调用节点并发回结果图；LLM 还能看到结果图并自行调整重做 |
 | 3 | [libtorch 基础与采样数学](phase-03-libtorch-sampling/README.md) | 主线 | 7 | 不用任何模型，LLM 驱动采样节点把噪声迭代成可见结果 |
 | 4 | [权重加载与 VAE](phase-04-weights-vae/README.md) | 主线 | 8 | 一张图经 VAE 编码再解码能重建，与参考值误差在容差内 |

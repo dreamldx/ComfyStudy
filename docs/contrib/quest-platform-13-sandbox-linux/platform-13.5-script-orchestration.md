@@ -2,7 +2,7 @@
 
 - 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/platform-13-sandbox-linux`（支线不打 tag，用 `git log quest/platform-13-sandbox-linux --grep="^chapter-platform-13.5"` 定位本章提交）
 - 所属支线：[支线 platform-13：沙箱与脚本编排（Linux 完整版）](README.md)
-- 可开始于：主线 [1.3 Tool Calling 循环](../../tutorial/phase-01-llm-chat/1.3-tool-calling.md)；并需先完成支线 llm-05（`quest/llm-05-sandbox`）与 platform-01
+- 可开始于：主线 [1.4 工具运行时：注册、校验与执行](../../tutorial/phase-01-llm-chat/1.4-tool-runtime.md)；并需先完成支线 llm-05（`quest/llm-05-sandbox`）与 platform-01
 - 一句话目标：Linux 版 llm-5.5：与原章节一致，在 Linux 上构建并运行验证，记录与 Windows 的差异
 
 ## 1. 本章目标与成果

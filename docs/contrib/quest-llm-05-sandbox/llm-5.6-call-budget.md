@@ -2,7 +2,7 @@
 
 - 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/llm-05-sandbox`（支线不打 tag，用 `git log quest/llm-05-sandbox --grep="^chapter-llm-5.6"` 定位本章提交）
 - 所属支线：[支线 llm-05：沙箱与脚本编排](README.md)
-- 可开始于：主线 [1.3 Tool Calling 循环](../../tutorial/phase-01-llm-chat/1.3-tool-calling.md)
+- 可开始于：主线 [1.4 工具运行时：注册、校验与执行](../../tutorial/phase-01-llm-chat/1.4-tool-runtime.md)
 - 一句话目标：限制一段脚本能调用工具的总次数和总耗时，工具失败时怎样把错误整理后回给模型，让它能修正而不是重复
 
 ## 1. 本章目标与成果

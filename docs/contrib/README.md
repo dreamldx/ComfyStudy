@@ -32,8 +32,8 @@
 
 | 编号 | 主题 | 类型 | 章节数 | 完成标准 |
 |---|---|---|---|---|
-| llm-01 | [LLM 应用工程](quest-llm-01-llm-app-engineering/README.md) | 支线·草案 | 11 | 测出 libcurl 三种用法的差别并选定机器人里用哪一种；把 libcurl 接进 Boost.Asio 的事件循环（协程）；在 Discord 里机器人边想边发（流式更新同一条消息），输出可校验的结构化 JSON，长对话自动压缩，并给出每个频道的用量与费用；用录好的响应就能确定地回放测试；聊天历史的表结构有版本和升级脚本，一轮对话的消息在一个事务里写入，历史里不存令牌和密钥 |
-| llm-02 | [Agent 进阶](quest-llm-02-agent-advanced/README.md) | 支线·草案 | 10 | 机器人能记住用户的偏好、按语义检索自己以前生成的图、并行调用工具、把外部 MCP 服务当作 Skill 使用，并在节点图出错时根据校验信息自行修正；并能搜索、并只读查询自己的聊天历史 |
+| llm-01 | [LLM 应用工程](quest-llm-01-llm-app-engineering/README.md) | 支线·草案 | 12 | 测出 libcurl 三种用法的差别并选定机器人里用哪一种；把 libcurl 接进 Boost.Asio 的事件循环（协程）；在 Discord 里机器人边想边发（流式更新同一条消息），输出可校验的结构化 JSON，长对话自动压缩，并给出每个频道的用量与费用；用录好的响应就能确定地回放测试；聊天历史的表结构有版本和升级脚本，一轮对话的消息在一个事务里写入，历史里不存令牌和密钥 |
+| llm-02 | [Agent 进阶](quest-llm-02-agent-advanced/README.md) | 支线·草案 | 11 | 机器人能记住用户的偏好、按语义检索自己以前生成的图、并行调用工具、把外部 MCP 服务当作 Skill 使用，并在节点图出错时根据校验信息自行修正；并能搜索、并只读查询自己的聊天历史 |
 | llm-03 | [用 LLM 改进出图](quest-llm-03-llm-image-craft/README.md) | 支线·草案 | 7 | 用户只说一句模糊的话，机器人自动扩写提示词、出图、让视觉模型评审并重画，最后发回最好的一张并解释为什么选它 |
 | llm-04 | [Skills 进阶](quest-llm-04-skills-advanced/README.md) | 支线·草案 | 9 | Skill 用统一的文件格式描述，模型只在需要时才读到它的正文和资源；有一套评测集能量化“该用哪个 Skill”选得准不准；录好的操作可以自动生成 Skill，并带着权限声明打包、热重载 |
 | llm-05 | [沙箱与脚本编排](quest-llm-05-sandbox/README.md) | 支线·草案 | 8 | 模型写的一小段脚本能在沙箱里安全地运行：限制时间、内存和可用的函数；脚本能在预算内循环调用受控的工具，把批量任务压成一轮；一组逃逸用例保证它出不了沙箱 |
@@ -55,7 +55,7 @@ Linux 实现只存在于这些分支里，不进入主线的 `src/`，也不进�
 | platform-09 | [性能对比·Qwen-Image](quest-platform-09-perf-qwen-image/README.md) | 支线·草案 | 分析 | 2 | 给出 Qwen-Image 分段加载与逐块卸载在 Linux 与 Windows 上的耗时与显存对比 |
 | platform-10 | [源码构建与官方版本对比（Linux）](quest-platform-10-source-build/README.md) | 支线·草案 | 分析 | 5 | 说清哪些库值得在 Linux 上源码构建、收益多大、代价是什么 |
 | platform-11 | [GCC 与 Clang 的编译器性能优化](quest-platform-11-gcc-clang/README.md) | 支线·草案 | 分析 | 5 | 整理 GCC 与 Clang 的优化选项，给出 Linux 线推荐的优化选项 |
-| platform-12 | [Agent 进阶（Linux 完整版）](quest-platform-12-agent-advanced-linux/README.md) | 支线·草案 | 功能 | 10 | Linux 上 llm-02 的全部章节构建通过，并记录与 Windows 的差异 |
+| platform-12 | [Agent 进阶（Linux 完整版）](quest-platform-12-agent-advanced-linux/README.md) | 支线·草案 | 功能 | 11 | Linux 上 llm-02 的全部章节构建通过，并记录与 Windows 的差异 |
 | platform-13 | [沙箱与脚本编排（Linux 完整版）](quest-platform-13-sandbox-linux/README.md) | 支线·草案 | 功能 | 8 | Linux 上 llm-05 的全部章节构建通过，子进程沙箱改用 Linux 的机制并通过逃逸测试 |
 | platform-14 | [Skills 进阶（Linux 完整版）](quest-platform-14-skills-advanced-linux/README.md) | 支线·草案 | 功能 | 9 | Linux 上 llm-04 的全部章节构建通过，并记录与 Windows 的差异 |
 

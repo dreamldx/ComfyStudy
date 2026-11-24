@@ -1,9 +1,9 @@
-# llm-2.8 规划与子任务
+# llm-2.5 按语义检索历史作品
 
-- 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/llm-02-agent-advanced`（支线不打 tag，用 `git log quest/llm-02-agent-advanced --grep="^chapter-llm-2.8"` 定位本章提交）
+- 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/llm-02-agent-advanced`（支线不打 tag，用 `git log quest/llm-02-agent-advanced --grep="^chapter-llm-2.5"` 定位本章提交）
 - 所属支线：[支线 llm-02：Agent 进阶](README.md)
 - 可开始于：主线 [2.7 视觉反馈闭环](../../tutorial/phase-02-opencv-handles/2.7-vision-feedback-loop.md)
-- 一句话目标：让一个 LLM 先拆任务，再分给带不同工具集的子 agent 执行并汇总，讨论什么时候不值得拆
+- 一句话目标：给每张生成的图配上描述并建立向量索引，支持“找出我上周生成的那只猫”
 
 ## 1. 本章目标与成果
 
@@ -15,7 +15,7 @@
 
 ## 3. 本章改动
 
-待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-llm-2.8-planner-worker:` 开头，可用 `git show --stat` 查看。）
+待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-llm-2.5-semantic-gallery:` 开头，可用 `git show --stat` 查看。）
 
 ## 4. 关键代码讲解
 

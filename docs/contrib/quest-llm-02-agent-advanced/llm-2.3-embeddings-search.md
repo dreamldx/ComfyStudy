@@ -1,6 +1,6 @@
-# llm-2.2 嵌入与向量检索
+# llm-2.3 嵌入与向量检索
 
-- 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/llm-02-agent-advanced`（支线不打 tag，用 `git log quest/llm-02-agent-advanced --grep="^chapter-llm-2.2"` 定位本章提交）
+- 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/llm-02-agent-advanced`（支线不打 tag，用 `git log quest/llm-02-agent-advanced --grep="^chapter-llm-2.3"` 定位本章提交）
 - 所属支线：[支线 llm-02：Agent 进阶](README.md)
 - 可开始于：主线 [1.2 LLM 双协议与 Provider 抽象](../../tutorial/phase-01-llm-chat/1.2-llm-providers.md)
 - 一句话目标：调用嵌入接口得到向量，用余弦相似度做最近邻检索，先暴力扫描再讨论索引
@@ -11,11 +11,11 @@
 
 ## 2. 背景与概念
 
-待写。
+待写。（要点：做完后接进 llm-2.2 的记忆路由，作为“检索”一层。）
 
 ## 3. 本章改动
 
-待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-llm-2.2-embeddings-search:` 开头，可用 `git show --stat` 查看。）
+待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-llm-2.3-embeddings-search:` 开头，可用 `git show --stat` 查看。）
 
 ## 4. 关键代码讲解
 

@@ -1,9 +1,9 @@
-# llm-2.6 MCP 服务端
+# llm-2.6 MCP 客户端
 
 - 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/llm-02-agent-advanced`（支线不打 tag，用 `git log quest/llm-02-agent-advanced --grep="^chapter-llm-2.6"` 定位本章提交）
 - 所属支线：[支线 llm-02：Agent 进阶](README.md)
-- 可开始于：主线 [1.3 Tool Calling 循环](../../tutorial/phase-01-llm-chat/1.3-tool-calling.md)
-- 一句话目标：把本项目的节点和 Skill 作为 MCP 服务暴露出去，让别的程序也能调用
+- 可开始于：主线 [1.4 工具运行时：注册、校验与执行](../../tutorial/phase-01-llm-chat/1.4-tool-runtime.md)
+- 一句话目标：实现 Model Context Protocol 的客户端（基于标准输入输出的 JSON-RPC），把外部工具服务当作 Skill 装载
 
 ## 1. 本章目标与成果
 
@@ -11,11 +11,11 @@
 
 ## 2. 背景与概念
 
-待写。
+待写。（要点：MCP 工具是一种 `ToolSource`（主线 1.4），注册进同一个工具运行时。）
 
 ## 3. 本章改动
 
-待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-llm-2.6-mcp-server:` 开头，可用 `git show --stat` 查看。）
+待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-llm-2.6-mcp-client:` 开头，可用 `git show --stat` 查看。）
 
 ## 4. 关键代码讲解
 

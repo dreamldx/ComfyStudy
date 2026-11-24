@@ -1,4 +1,4 @@
-# platform-12.9 搜索聊天历史（全文检索）
+# platform-12.9 规划与子任务
 
 - 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/platform-12-agent-advanced-linux`（支线不打 tag，用 `git log quest/platform-12-agent-advanced-linux --grep="^chapter-platform-12.9"` 定位本章提交）
 - 所属支线：[支线 platform-12：Agent 进阶（Linux 完整版）](README.md)
@@ -15,7 +15,7 @@
 
 ## 3. 本章改动
 
-待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-platform-12.9-history-search:` 开头，可用 `git show --stat` 查看。）
+待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-platform-12.9-planner-worker:` 开头，可用 `git show --stat` 查看。）
 
 ## 4. 关键代码讲解
 

@@ -2,7 +2,7 @@
 
 - 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/llm-04-skills-advanced`（支线不打 tag，用 `git log quest/llm-04-skills-advanced --grep="^chapter-llm-4.1"` 定位本章提交）
 - 所属支线：[支线 llm-04：Skills 进阶](README.md)
-- 可开始于：主线 [1.4 Skill 机制：按需加载的能力](../../tutorial/phase-01-llm-chat/1.4-skills.md)
+- 可开始于：主线 [1.5 Skill 机制：按需加载的能力](../../tutorial/phase-01-llm-chat/1.5-skills.md)
 - 一句话目标：设计 SKILL.md：头部写名字、说明、所需工具，正文写用法；解析并校验，对照 Anthropic 的 Agent Skills 约定
 
 ## 1. 本章目标与成果

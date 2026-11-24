@@ -1,9 +1,9 @@
-# llm-2.10 让 LLM 查自己的历史
+# llm-2.10 搜索聊天历史（全文检索）
 
 - 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/llm-02-agent-advanced`（支线不打 tag，用 `git log quest/llm-02-agent-advanced --grep="^chapter-llm-2.10"` 定位本章提交）
 - 所属支线：[支线 llm-02：Agent 进阶](README.md)
-- 可开始于：主线 [1.8 聊天历史持久化（SQLite）](../../tutorial/phase-01-llm-chat/1.8-chat-history.md)
-- 一句话目标：提供只读的历史查询工具：参数化查询、只读连接、行数上限；记录里的内容当作数据而不是指令，防止历史里的提示注入；说明它与 llm-2.3 长期记忆的分工
+- 可开始于：主线 [1.9 聊天历史持久化（SQLite）](../../tutorial/phase-01-llm-chat/1.9-chat-history.md)
+- 一句话目标：用 SQLite 的 FTS5 搜聊天记录；中文分词是难点：试内置分词器的效果，再对比三字符分词或在应用层切词（到时核实各方案是否可用）；和 llm-2.3 的向量检索对比：关键词与语义各适合什么
 
 ## 1. 本章目标与成果
 
@@ -15,7 +15,7 @@
 
 ## 3. 本章改动
 
-待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-llm-2.10-history-tool:` 开头，可用 `git show --stat` 查看。）
+待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-llm-2.10-history-search:` 开头，可用 `git show --stat` 查看。）
 
 ## 4. 关键代码讲解
 

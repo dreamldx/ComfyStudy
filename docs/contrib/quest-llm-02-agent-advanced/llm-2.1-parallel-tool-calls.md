@@ -2,7 +2,7 @@
 
 - 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/llm-02-agent-advanced`（支线不打 tag，用 `git log quest/llm-02-agent-advanced --grep="^chapter-llm-2.1"` 定位本章提交）
 - 所属支线：[支线 llm-02：Agent 进阶](README.md)
-- 可开始于：主线 [1.3 Tool Calling 循环](../../tutorial/phase-01-llm-chat/1.3-tool-calling.md)
+- 可开始于：主线 [1.4 工具运行时：注册、校验与执行](../../tutorial/phase-01-llm-chat/1.4-tool-runtime.md)
 - 一句话目标：一次响应里有多个工具调用时并发执行，并按协议要求把结果成对返回
 
 ## 1. 本章目标与成果
@@ -11,7 +11,7 @@
 
 ## 2. 背景与概念
 
-待写。
+待写。（要点：能不能并行按主线 1.4 的副作用分类决定，只读的可以并行，有副作用的不行。）
 
 ## 3. 本章改动
 
