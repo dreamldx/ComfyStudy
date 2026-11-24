@@ -18,7 +18,7 @@
   - `CurlThreadClient`（A）：一个专门的线程跑 `curl_multi_poll`，所有请求挂在同一个 multi 句柄上。
   - `SocketClient`（B）：`curl_multi_socket_action`，libcurl 的套接字交给事件循环等，没有额外的线程。
 - libcurl 的 HTTP/2 支持（vcpkg 的 `curl[http2]`），以及 HTTP/1.1 和 HTTP/2 的原理与差别。
-- 一个基准程序 `curl_bench`：本机服务器上的对比，真实服务（OpenRouter、Anthropic）上的对比，以及三个只读的探测（三家服务对 HTTP/2 怎么说、空闲的连接活多久、流式请求在 HTTP/2 下怎么到达）。
+- 一个基准程序 `curl_bench`：本机服务器上的对比，真实服务（OpenRouter、Anthropic）上的对比，以及四个只读的探测（三家服务对 HTTP/2 怎么说、空闲的连接活多久、流式请求在 HTTP/2 下怎么到达、12 到 300 个请求同时在途时多路复用怎么样）。
 - 结论：机器人默认用 A，理由和数据在第 6、7 节。
 
 本章只测了 POST 一个完整回答的情形，没有做限流（429）的实验；流式输出留给 llm-1.4；`Transport` 接口留给 llm-1.3。
@@ -64,7 +64,7 @@
 
 ## 3. 本章改动
 
-本章的代码在支线分支 `quest/llm-01-llm-app-engineering` 上，不合入 main，也不打 tag。提交信息以 `chapter-llm-1.2-curl-modes:` 开头，`git log quest/llm-01-llm-app-engineering --grep="^chapter-llm-1.2"` 可以找到。本章有四个提交：
+本章的代码在支线分支 `quest/llm-01-llm-app-engineering` 上，不合入 main，也不打 tag。提交信息以 `chapter-llm-1.2-curl-modes:` 开头，`git log quest/llm-01-llm-app-engineering --grep="^chapter-llm-1.2"` 可以找到。本章有五个提交：
 
 1. 积木：
    - `vcpkg.json`：curl 加上 `http2` 特性（会多装 nghttp2）。
@@ -77,6 +77,7 @@
    - `tests/test_async_http.cpp`：23 个测试。
    - `CMakeLists.txt`：`async_http.cpp` 进了核心库，核心库链接 `comfystudy_asio`；`scripts/check-build.ps1`：编译和链接命令的数量随之改成 24 和 15。
 4. 基准加上三个协程客户端和三个探测：`curl_bench probe`、`idle`、`stream`。
+5. 多路复用的专门测量：`curl_bench mux`。
 
 每个提交同时更新了分支根目录的 `README.md`。主线 1.1 的 `http::Post` 的调用方式没有变，已有的测试照常通过。
 
@@ -582,7 +583,7 @@ TYPED_TEST(InterruptibleTest, CancellingTheCoroutineCancelsTheRequest) {
 
 基准里把三个客户端放进同一个函数：同时发出所有请求，等所有答案：
 
-<!-- src: bench/curl_bench.cpp#L170-L183 -->
+<!-- src: bench/curl_bench.cpp#L173-L186 -->
 ```cpp
 template <typename Client>
 Results Async(Client& client, boost::asio::io_context& io, const std::vector<http::PostRequest>& requests) {
@@ -721,6 +722,94 @@ openai: ok, HTTP version code 3 (3 = HTTP/2), status 200, content-type text/even
 
 两家的流式在 HTTP/2 下都能正常到达，类型是 `text/event-stream`。到达的块有多粗，要看服务和中间的网关怎么攒数据：Anthropic 这次只有两大块，OpenRouter 是九块。事件边界的处理留给 llm-1.4，这里只确认流在 HTTP/2 上能用。
 
+### 5.6 多路复用：12 到 300 个请求同时在途
+
+上面 12 个请求只看到“1 条连接”。`mux` 把它单独测一遍：用一个 `CurlThreadClient`，同时发出 N 个请求，分别在 HTTP/1.1 和 HTTP/2 下各做 3 次，取总耗时居中的一次，并且记下三件事：新建了几条连接；同一时刻最多有几个请求在等回答（“同时在途”）；有没有被服务拒绝（429）。
+
+```powershell
+$env:BENCH_REPS = 3
+build\windows-release\bin\curl_bench.exe mux 12,50,100                          # OpenRouter
+build\windows-release\bin\curl_bench.exe mux 12,50,100 --llm_provider anthropic
+```
+
+“同时在途”是这样量的：每个请求在发出前记下开始时间，答案回来后记下结束时间，把所有开始和结束排在一起数，数出最大的重叠。如果请求在一条连接里是一个一个排队的，这个数会小于 N。
+
+<!-- src: bench/curl_bench.cpp#L512-L530 -->
+```cpp
+  boost::asio::io_context io;
+  http::Options options;
+  options.version = version;
+  http::CurlThreadClient client(options);
+  std::vector<Span> spans(requests.size());
+  const auto t0 = Clock::now();
+  auto since = [&](Clock::time_point t) { return std::chrono::duration<double, std::milli>(t - t0).count(); };
+  auto job = [&](std::size_t i) -> boost::asio::awaitable<void> {
+    spans[i].start = since(Clock::now());
+    try {
+      const http::Response r = co_await client.Post(requests[i]);
+      spans[i].status = r.status;
+      spans[i].connections = r.timing.new_connections;
+    } catch (const std::exception&) {
+    }
+    spans[i].end = since(Clock::now());
+  };
+  for (std::size_t i = 0; i < requests.size(); ++i) boost::asio::co_spawn(io, job(i), boost::asio::detached);
+  io.run();
+```
+
+<!-- src: bench/curl_bench.cpp#L548-L553 -->
+```cpp
+  std::sort(events.begin(), events.end());  // at the same time an end (-1) comes before a start (+1)
+  int now = 0;
+  for (const auto& event : events) {
+    now += event.second;
+    run.max_overlap = (std::max)(run.max_overlap, static_cast<std::size_t>(now));
+  }
+```
+
+OpenRouter（毫秒；`conns` 是新建的连接数，`overlap` 是同时在途的最大数量，`p95` 是第 95 百分位的单个请求耗时）：
+
+| N | 版本 | 总耗时 | conns | overlap | p50 | p95 |
+|---|---|---|---|---|---|---|
+| 12 | HTTP/1.1 | 740 | 12 | 12 | 449 | 740 |
+| 12 | HTTP/2 | 923 | 1 | 12 | 668 | 923 |
+| 50 | HTTP/1.1 | 1126 | 50 | 50 | 552 | 920 |
+| 50 | HTTP/2 | 1707 | 1 | 50 | 804 | 1138 |
+| 100 | HTTP/1.1 | 1368 | 100 | 100 | 644 | 1144 |
+| 100 | HTTP/2 | 3602 | 1 | 100 | 839 | 3234 |
+
+N 为 100 又单独重复了 5 次：HTTP/1.1 是 1343 毫秒（p95 1034），HTTP/2 是 3093 毫秒（p95 2853）。
+
+Anthropic：
+
+| N | 版本 | 总耗时 | conns | overlap | p50 | p95 |
+|---|---|---|---|---|---|---|
+| 12 | HTTP/1.1 | 1200 | 12 | 12 | 555 | 1200 |
+| 12 | HTTP/2 | 1146 | 1 | 12 | 624 | 1146 |
+| 50 | HTTP/1.1 | 1296 | 50 | 50 | 603 | 1235 |
+| 50 | HTTP/2 | 1239 | 1 | 50 | 542 | 1216 |
+| 100 | HTTP/1.1 | 1799 | 100 | 100 | 756 | 1395 |
+| 100 | HTTP/2 | 1643 | 1 | 100 | 655 | 1247 |
+
+再试一次超过服务端 256 个并发流的上限：N 为 300，各只跑 1 次。
+
+| 服务 | 版本 | 总耗时 | conns | overlap | 429 |
+|---|---|---|---|---|---|
+| OpenRouter | HTTP/1.1 | 11688 | 300 | 300 | 0 |
+| OpenRouter | HTTP/2 | 11263 | 3 | 300 | 0 |
+| Anthropic | HTTP/1.1 | 2581 | 300 | 300 | 0 |
+| Anthropic | HTTP/2 | 1610 | 3 | 300 | 0 |
+
+怎么读：
+
+- **多路复用确实在工作：** 两家服务在 HTTP/2 下，12、50、100 个请求都只用 1 条连接，而且 `overlap` 等于 N，也就是 100 个请求同时都在等回答，并没有在连接里排队。HTTP/1.1 下每个请求一条连接，连接数等于 N。
+- **超过 256 个流，libcurl 会再开连接：** N 为 300 时 HTTP/2 用了 3 条连接，没有请求被拒绝，也没有失败。这符合服务端在 SETTINGS 里说的 256 个并发流的上限。
+- **Anthropic：** HTTP/2 在所有 N 上都不比 HTTP/1.1 慢，N 为 300 时快得多（1610 对 2581 毫秒），因为 HTTP/1.1 要开 300 条连接，每条都要握手。
+- **OpenRouter：** N 为 100 时，一条 HTTP/2 连接上的 100 个请求总耗时是 100 条 HTTP/1.1 连接的两倍多（3093 对 1343 毫秒，5 次取中），p50 只差一点（738 对 643 毫秒），差在尾部：p95 是 2853 对 1034 毫秒。就是说多数请求一样快，但有一些请求在这一条连接上被拖慢了。原因我没有查：可能在网关，也可能在上游，这次没有证据说明。N 为 300 时两个版本都要 11 秒左右，这是服务本身在高并发下慢，和协议无关。
+- **没有遇到 429。** 两家服务在 300 个同时在途的请求下都没有拒绝，当然这只说明这次、这个账号的限额没有碰到，不代表它们没有限流。
+
+对机器人的含义：一个机器人同时在途的请求一般是几个到几十个，在这个范围里多路复用在两家服务上都正常，Anthropic 上还省连接；OpenRouter 上要是发现一条连接上的尾部延迟变大，可以把 `Options::version` 设成 `Version::kHttp1_1` 退回多条连接。
+
 ## 6. 验证
 
 - `ctest`：144 个测试通过，本章新增 32 个：
@@ -758,7 +847,7 @@ openai: ok, HTTP version code 3 (3 = HTTP/2), status 200, content-type text/even
 **其他的取舍：**
 
 - 为什么不共享连接缓存：见第 8 节，`Share` 只共享 DNS 缓存和 TLS 会话。在本章的数据里 `Share` 也没有带来可见的差别。
-- 为什么 HTTP/2 不是选择的理由：数据上它对总耗时没有影响（回答时间远大于建立连接的时间），影响的是连接数（12 变 1），而 A 和 B 本来就能享受到。选择 A 不需要 HTTP/2，但有了它不吃亏。
+- 为什么 HTTP/2 不是选择的理由：几个到十几个请求时它对总耗时没有影响（回答时间远大于建立连接的时间），影响的是连接数（12 变 1），而 A 和 B 本来就能享受到。请求更多时两家服务表现不同（5.6）：Anthropic 上 HTTP/2 不慢，300 个并发时明显更快；OpenRouter 上 100 个并发时一条连接的尾部变慢。所以默认让 libcurl 自己选（`Version::kAny`，服务支持就用 HTTP/2），发现某个服务有问题时再退回 HTTP/1.1。
 - libcurl 8.23.0，vcpkg 的 `curl[http2]` 带上 nghttp2 1.71.0，Windows 上 TLS 用 Schannel。HTTP/2 版本代码在 libcurl 里是 `CURL_HTTP_VERSION_2_0 = 3`，不是 2。
 - 被否决的：libcurl 的 `curl_multi_socket_action` 配 libuv（没有协程支持，也不是我们的事件循环）；单独为每个请求开线程（线程数跟着请求数涨）；`Share` 加 `CURL_LOCK_DATA_CONNECT`（崩溃）。
 - 限流（429）没有测，也就没有测“12 个同时发会不会被服务限流”：本章的 12 个请求在两家服务上都没有遇到限流。线程池或 multi 的并发数要不要设上限，留给 llm-1.8（重试、限流与降级）。
@@ -796,7 +885,8 @@ openai: ok, HTTP version code 3 (3 = HTTP/2), status 200, content-type text/even
 3. 把 `Share` 加上 `CURL_LOCK_DATA_CONNECT` 之后，用 `curl_bench local 20 50 4 1` 连续运行几十次，复现崩溃。再试着只共享 DNS，只共享 TLS 会话，看哪种有可见的收益。
 4. 在 `SocketClient` 里去掉 `wait_error`，写一个测试复现“连接被拒绝要等 10 秒”。
 5. `idle` 只测到 90 秒。把间隔加到 5 分钟、15 分钟，看哪一家先关连接，再用 `Session` 发请求，看 libcurl 是不是悄悄重试了一条新的。
-6. 给三个客户端加一个“同时在途的请求数”的统计（原子计数器），在 20 个请求的本机基准里确认 C 同时在途不超过 4，A 和 B 是 20。
+6. OpenRouter 在 100 个并发时一条 HTTP/2 连接的尾部变慢，把 `CURLOPT_VERBOSE` 的输出和每个流的收发时间记下来，看慢的流是在发出请求之前就在等，还是在等回答。试着 N 取 60、80、120，看变慢从哪里开始。
+7. 给三个客户端加一个“同时在途的请求数”的统计（原子计数器），在 20 个请求的本机基准里确认 C 同时在途不超过 4，A 和 B 是 20。
 
 ## 10. 支线
 
