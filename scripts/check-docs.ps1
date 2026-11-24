@@ -1,4 +1,4 @@
-# Validates the tutorial chapters under docs/tutorial/phase-*/ (see plan Task 1).
+# Validates the tutorial chapters under docs/tutorial/phase-*/ (mainline) and docs/contrib/quest-*/ (quest).
 # Usage: powershell -NoProfile -File scripts/check-docs.ps1 [-CheckTags]
 # ASCII-only on purpose: Chinese labels are built from code points.
 param([switch]$CheckTags)
@@ -23,8 +23,10 @@ function ReadLf([string]$path) { ([IO.File]::ReadAllText($path, [Text.Encoding]:
 
 $taggedPhases = New-Object System.Collections.Generic.HashSet[string]
 $tutorial = Join-Path $repo 'docs\tutorial'
-$chapters = @(Get-ChildItem -Path $tutorial -Recurse -File -Filter '*.md' |
-  Where-Object { $_.Directory.Name -like 'phase-*' -and $_.Name -match '^\d+\.\d+-.+\.md$' })
+$contrib = Join-Path $repo 'docs\contrib'
+$chapters = @(Get-ChildItem -Path @($tutorial, $contrib) -Recurse -File -Filter '*.md' |
+  Where-Object { ($_.Directory.Name -like 'phase-*' -and $_.Name -match '^\d+\.\d+-.+\.md$') -or
+                 ($_.Directory.Name -like 'quest-*' -and $_.Name -match '^(diffusion|llm|platform|paper)-\d+\.\d+-.+\.md$') })
 
 $existingTags = @(& git -C $repo tag -l)
 
@@ -43,23 +45,26 @@ foreach ($f in $chapters) {
   }
   if ($null -eq $status) { Fail $rel 'missing status line in header'; continue }
   if ($validStatus -notcontains $status) { Fail $rel "unknown status '$status'"; continue }
-  $phaseNum = [int]([regex]::Match($f.Directory.Name, '^phase-(\d+)-').Groups[1].Value)
+  # Mainline chapters live in phase-NN-<slug>; quest chapters in quest-(diffusion|llm|platform|paper)-NN-<slug>.
+  $isQuest = $f.Directory.Name -like 'quest-*'
 
   # A finished chapter is checked against the sources as they were at its tag (they keep
   # changing in later chapters); a chapter still in progress is checked against the working tree.
   $headerTag = $null
   $rxHeaderTag = [regex]::Escape($LBL_TAG) + '`([^`]+)`'
   foreach ($l in $head) { $m = [regex]::Match($l, $rxHeaderTag); if ($m.Success) { $headerTag = $m.Groups[1].Value; break } }
-  $useTag = ($phaseNum -lt 17 -and $status -eq $ST_TAGGED -and $headerTag -and ($existingTags -contains $headerTag))
+  $useTag = (-not $isQuest -and $status -eq $ST_TAGGED -and $headerTag -and ($existingTags -contains $headerTag))
 
-  # (b) finished chapters: sections 1..9 in order, no placeholder left
+  # (b) finished chapters: sections 1..11 in order, no placeholder left
   if ($status -ne $ST_NEW) {
-    $expect = 1
+    $found = @()
     foreach ($l in $lines) {
-      $m = [regex]::Match($l, '^## (\d)\.')
-      if ($m.Success -and [int]$m.Groups[1].Value -eq $expect) { $expect++ }
+      $m = [regex]::Match($l, '^## (\d+)\.')
+      if ($m.Success) { $found += [int]$m.Groups[1].Value }
     }
-    if ($expect -ne 10) { Fail $rel 'sections 1..9 missing or out of order' }
+    $want9 = (1..9) -join ','
+    $got = $found -join ','
+    if ($got -ne "$want9,10,11") { Fail $rel 'sections must be 1..11 in order' }
     if ($text.Contains($TODO)) { Fail $rel 'status is not "not started" but the placeholder text is still present' }
   }
 
@@ -89,9 +94,9 @@ foreach ($f in $chapters) {
     $i = $j
   }
 
-  # (d) mainline tags / (e) appendix branches
-  if ($phaseNum -ge 17) {
-    $branch = 'appendix/' + ($f.Directory.Name -replace '^phase-', '')
+  # (d) mainline tags / (e) quest branches
+  if ($isQuest) {
+    $branch = 'quest/' + ($f.Directory.Name -replace '^quest-', '')
     $want = $LBL_BRANCH + '`' + $branch + '`'
     $hit = $false
     foreach ($l in $head) { if ($l.Contains($want)) { $hit = $true } }

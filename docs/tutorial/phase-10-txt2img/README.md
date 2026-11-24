@@ -13,7 +13,7 @@
 | 10.2 | [KSampler 与 CFG](10.2-ksampler-cfg.md) | `chapter-10.2-ksampler-cfg` | 实现含 CFG 的 `KSampler`，带 `backend` 参数 |
 | 10.3 | [节点装配与显存管理](10.3-txt2img-assembly.md) | `chapter-10.3-txt2img-assembly` | 装配文生图节点链并管理显存 |
 | 10.4 | [Skills 与 Discord 演示](10.4-skills-discord-demo.md) | `chapter-10.4-skills-discord-demo` | 整理各 Skill 并在 Discord 演示文生图 |
-| 10.5 | [LoRA（选读）（选读）](10.5-lora.md) | `chapter-10.5-lora` | 实现 LoRA 权重合并 |
+| 10.5 | [LoRA](10.5-lora.md) | `chapter-10.5-lora` | 实现 LoRA 权重合并 |
 | 10.6 | [img2img（SDEdit）](10.6-img2img.md) | `chapter-10.6-img2img` | 把原图编码后加噪到中间时间步再去噪，噪声量决定改动幅度 |
 | 10.7 | [Inpaint 与 Outpaint](10.7-inpaint-outpaint.md) | `chapter-10.7-inpaint-outpaint` | 在潜空间用遮罩混合，每步把未遮罩区域替换回原图的加噪版本 |
 

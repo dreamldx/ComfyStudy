@@ -10,7 +10,7 @@
 | 编号 | 章节 | tag | 目标 |
 |---|---|---|---|
 | 0.0 | [初始化仓库与教程骨架](0.0-repo-init.md) | `chapter-0.0-repo-init` | `git init` 并添加远程仓库，建立教程骨架，写“本教程如何阅读”并打第一个 tag |
-| 0.1 | [MSVC 环境与第一个 CMakeLists](0.1-msvc-cmake.md) | `chapter-0.1-msvc-cmake` | 进入 MSVC 编译环境，创建第一批源码，写第一个 CMakeLists.txt，并通过详细的构建输出说明 cl 与 link 的编译过程（含 Debug 与 Release），弄清 Ninja 如何追踪头文件依赖，并学会生成 Visual Studio 解决方案、在 Visual Studio 里打开项目 |
+| 0.1 | [MSVC 环境与第一个 CMakeLists](0.1-msvc-cmake.md) | `chapter-0.1-msvc-cmake` | 进入 MSVC 编译环境，创建第一批源码，写第一个 CMakeLists.txt，并用详细的构建输出看懂 cl 与 link 的编译过程（含 Debug 与 Release），弄清 Ninja 如何追踪头文件依赖，并学会生成 Visual Studio 解决方案、在 Visual Studio 里打开项目 |
 | 0.2 | [测试（CTest）](0.2-tests-ctest.md) | `chapter-0.2-tests-ctest` | 加入测试框架并用 CTest 运行 |
 | 0.3 | [vcpkg 依赖管理](0.3-vcpkg-deps.md) | `chapter-0.3-vcpkg-deps` | 用 vcpkg manifest 引入 nlohmann/json、libcurl、GoogleTest、spdlog 和 CLI11，并接入 CMake，把测试迁移到 GoogleTest |
 | 0.4 | [命令行与配置文件](0.4-cli-config.md) | `chapter-0.4-cli-config` | 用 CLI11 读取命令行、配置文件（INI 或 TOML）和环境变量，优先级为环境变量 < 配置文件 < 命令行，打印配置，用 spdlog 记录加载过程，密钥遮蔽 |
@@ -19,7 +19,7 @@
 
 ## 阶段总览
 
-这一阶段搭起后面所有阶段共用的地基：一个能在 Windows 上用 MSVC、CMake 和 Ninja 构建的 C++ 项目，有测试、有第三方库、有配置、有对 DLL 的掌控。后面不管是调用 LLM、做图像处理，还是实现扩散模型，都在这个骨架上继续长。
+这一阶段搭好后面所有阶段共用的基础：一个能在 Windows 上用 MSVC、CMake 和 Ninja 构建的 C++ 项目，带测试、第三方库和配置，并且管得住 DLL。后面调用 LLM、处理图像、实现扩散模型，都在这个项目上接着写。
 
 学完这一阶段，你能：
 
@@ -32,7 +32,7 @@
 
 核心概念：预设与构建目录、静态库与可执行文件、测试夹具、manifest 与基线、配置的优先级（环境变量 < 配置文件 < 命令行）、DLL 搜索顺序与清单。
 
-与后面的关系：阶段 1 起要用 libcurl 发请求、用配置文件放 Token 与密钥、用测试守住行为，这些都在本阶段准备好了。
+后面会用到的：阶段 1 起用 libcurl 发请求，用配置文件放 Token 和密钥，用测试防止改坏已有行为。这些本阶段都已备好。
 
 ## 演示
 
@@ -46,7 +46,7 @@ cmake --build --preset windows-debug --target check-dlls
 build\windows-debug\bin\comfystudy.exe --dependency-check
 ```
 
-依次是：构建并跑通全部测试；看自动生成的帮助；用配置文件、环境变量和命令行运行并看到打了码的配置；检查 DLL 部署；列出程序加载的每个 DLL。
+这几条命令依次是：构建、跑全部测试、看自动生成的帮助、运行程序并显示配置（密钥已打码，配置可来自配置文件、环境变量和命令行）、检查 DLL 部署、列出程序加载的每个 DLL。
 
 ## 技术资料汇总
 

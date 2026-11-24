@@ -13,7 +13,7 @@
 | 7.2 | [UNet 权重名映射](7.2-unet-weight-mapping.md) | `chapter-7.2-unet-weight-mapping` | 完成 UNet 的权重名映射并加载 |
 | 7.3 | [完整前向与单步对照](7.3-unet-forward-verify.md) | `chapter-7.3-unet-forward-verify` | 运行完整前向并与参考值对照 |
 | 7.4 | [性能基线](7.4-unet-baseline.md) | `chapter-7.4-unet-baseline` | 记录耗时与显存作为基线 |
-| 7.5 | [注意力优化（选读）（选读）](7.5-attention-optimization.md) | `chapter-7.5-attention-optimization` | 对比朴素实现、注意力切片与 `scaled_dot_product_attention` 的显存与速度 |
+| 7.5 | [注意力优化](7.5-attention-optimization.md) | `chapter-7.5-attention-optimization` | 对比朴素实现、注意力切片与 `scaled_dot_product_attention` 的显存与速度 |
 
 ## 阶段总览
 

@@ -3,12 +3,13 @@ site_description: 用 C++ 从零实现 ComfyUI 式图像生成系统的逐章中
 site_url: https://dreamldx.github.io/ComfyStudy/
 repo_url: https://github.com/dreamldx/ComfyStudy
 repo_name: dreamldx/ComfyStudy
-edit_uri: edit/main/docs/tutorial/
+edit_uri: edit/main/docs/
 
-docs_dir: docs/tutorial
+docs_dir: docs
 site_dir: site
 exclude_docs: |
   _template/
+  superpowers/
 
 theme:
   name: material

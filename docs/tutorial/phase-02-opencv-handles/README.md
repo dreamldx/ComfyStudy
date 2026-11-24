@@ -13,7 +13,7 @@
 | 2.2 | [节点基础设施](2.2-node-core.md) | `chapter-2.2-node-core` | 实现 `NodeSpec`、`NodeRegistry`、Schema 自动生成与类型校验 |
 | 2.3 | [OpenCV 基础节点](2.3-opencv-basic-nodes.md) | `chapter-2.3-opencv-basic-nodes` | 集成 OpenCV，实现 `LoadImage`、`SaveImage`、`Resize` |
 | 2.4 | [图像处理节点](2.4-image-processing-nodes.md) | `chapter-2.4-image-processing-nodes` | 实现模糊、调色、裁剪、混合、遮罩与合成 |
-| 2.5 | [Skills 按需加载](2.5-skills.md) | `chapter-2.5-skills` | 实现 Skill 目录、`load_skill`/`unload_skill` 与按会话动态工具集，回传图片附件 |
+| 2.5 | [图像 Skill 与图片附件](2.5-skills.md) | `chapter-2.5-skills` | 把图像节点整理成 Skill（沿用 1.4 的 Skill 机制），并让工具结果能回传图片附件 |
 | 2.6 | [调用记录与工作流导出](2.6-workflow-recording.md) | `chapter-2.6-workflow-recording` | 记录调用并导出可重放工作流，实现元工具并打磨错误信息 |
 | 2.7 | [视觉反馈闭环](2.7-vision-feedback-loop.md) | `chapter-2.7-vision-feedback-loop` | 出图后把结果图发回给 LLM 评价，让它调整参数再做一次 |
 
