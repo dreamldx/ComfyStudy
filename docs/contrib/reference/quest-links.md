@@ -22,14 +22,14 @@
 | diffusion-12 | `quest/diffusion-12-dit-speedup` | 主线 tag `chapter-15.7-flux-txt2img` |
 | diffusion-13 | `quest/diffusion-13-inference-engineering` | 主线 tag `chapter-10.2-ksampler-cfg` |
 | diffusion-14 | `quest/diffusion-14-quantization` | 主线 tag `chapter-10.3-txt2img-assembly` |
-| diffusion-15 | `quest/diffusion-15-vision-planning` | 分支 `quest/llm-01-llm-app-engineering` 的末端，再合入主线 tag `chapter-10.7-inpaint-outpaint`（15.7 用 llm-1.7 的录制回放；llm-01 的起点比 10.7 早，所以要另外合入） |
+| diffusion-15 | `quest/diffusion-15-vision-planning` | 分支 `quest/llm-01-llm-app-engineering` 的末端，再合入主线 tag `chapter-10.7-inpaint-outpaint`（15.7 用 llm-1.8 的录制回放；llm-01 的起点比 10.7 早，所以要另外合入） |
 | diffusion-16 | `quest/diffusion-16-sdxl` | 主线 tag `chapter-10.7-inpaint-outpaint` |
 | diffusion-17 | `quest/diffusion-17-sdcpp-compare` | 主线 tag `chapter-16.6-qwen-txt2img` |
 | llm-01 | `quest/llm-01-llm-app-engineering` | 主线 tag `chapter-1.7-chat-history` |
 | llm-02 | `quest/llm-02-agent-advanced` | 主线 tag `chapter-2.7-vision-feedback-loop` |
 | llm-03 | `quest/llm-03-llm-image-craft` | 主线 tag `chapter-10.4-skills-discord-demo` |
-| llm-04 | `quest/llm-04-skills-advanced` | 分支 `quest/llm-01-llm-app-engineering` 的末端，再合入主线 tag `chapter-2.6-workflow-recording`（4.8 用 llm-1.7 的录制回放；4.4 还需要 llm-05 的沙箱，见下面的“交错推进”） |
-| llm-05 | `quest/llm-05-sandbox` | 分支 `quest/llm-01-llm-app-engineering` 的末端（本阶段所需的最晚主线节点是 `chapter-1.3-tool-calling`，已包含在该分支的历史中；5.7 用 llm-1.7 的录制回放） |
+| llm-04 | `quest/llm-04-skills-advanced` | 分支 `quest/llm-01-llm-app-engineering` 的末端，再合入主线 tag `chapter-2.6-workflow-recording`（4.8 用 llm-1.8 的录制回放；4.4 还需要 llm-05 的沙箱，见下面的“交错推进”） |
+| llm-05 | `quest/llm-05-sandbox` | 分支 `quest/llm-01-llm-app-engineering` 的末端（本阶段所需的最晚主线节点是 `chapter-1.3-tool-calling`，已包含在该分支的历史中；5.7 用 llm-1.8 的录制回放） |
 | platform-01 | `quest/platform-01-linux-foundation` | 主线 tag `chapter-0.5-dll-management`（主线的 CMake 已按系统拆成平台文件，见 0.1） |
 | platform-02 | `quest/platform-02-libtorch-linux` | 分支 `quest/platform-01-linux-foundation` 的末端，再合入主线 tag `chapter-3.1-libtorch-setup` |
 | platform-03 | `quest/platform-03-mmap-linux` | 分支 `quest/platform-02-libtorch-linux` 的末端，再合入主线 tag `chapter-4.1-safetensors-parser` |
@@ -152,7 +152,7 @@
 | [diffusion-15.4 布局规划](../quest-diffusion-15-vision-planning/diffusion-15.4-layout-planning.md) | 视觉定位与布局规划 | [10.3 节点装配与显存管理](../../tutorial/phase-10-txt2img/10.3-txt2img-assembly.md) |  |
 | [diffusion-15.5 按布局区域出图](../quest-diffusion-15-vision-planning/diffusion-15.5-regional-generation.md) | 视觉定位与布局规划 | [10.3 节点装配与显存管理](../../tutorial/phase-10-txt2img/10.3-txt2img-assembly.md) | 依赖 diffusion-15.4；可选：区域提示见 diffusion-3.5（支线），不做则用整体提示 |
 | [diffusion-15.6 SVG 草图](../quest-diffusion-15-vision-planning/diffusion-15.6-svg-sketch.md) | 视觉定位与布局规划 | [10.6 img2img（SDEdit）](../../tutorial/phase-10-txt2img/10.6-img2img.md) | 仅对照：与 diffusion-1.6（涂鸦转图）对照，不做也不影响本章 |
-| [diffusion-15.7 澄清提问](../quest-diffusion-15-vision-planning/diffusion-15.7-clarifying-questions.md) | 视觉定位与布局规划 | [1.3 Tool Calling 循环](../../tutorial/phase-01-llm-chat/1.3-tool-calling.md) | 用 llm-1.7 的录制回放让评测可重复 |
+| [diffusion-15.7 澄清提问](../quest-diffusion-15-vision-planning/diffusion-15.7-clarifying-questions.md) | 视觉定位与布局规划 | [1.3 Tool Calling 循环](../../tutorial/phase-01-llm-chat/1.3-tool-calling.md) | 用 llm-1.8 的录制回放让评测可重复 |
 | [diffusion-15.8 visual-edit Skill](../quest-diffusion-15-vision-planning/diffusion-15.8-visual-edit-skill.md) | 视觉定位与布局规划 | [10.4 Skills 与 Discord 演示](../../tutorial/phase-10-txt2img/10.4-skills-discord-demo.md) | 依赖 diffusion-15.3、diffusion-15.5 |
 | [diffusion-16.1 SDXL 与 SD 1.5 的差异](../quest-diffusion-16-sdxl/diffusion-16.1-sdxl-overview.md) | SDXL | [10.7 Inpaint 与 Outpaint](../../tutorial/phase-10-txt2img/10.7-inpaint-outpaint.md) |  |
 | [diffusion-16.2 双文本编码器](../quest-diffusion-16-sdxl/diffusion-16.2-dual-text-encoders.md) | SDXL | [10.7 Inpaint 与 Outpaint](../../tutorial/phase-10-txt2img/10.7-inpaint-outpaint.md) | 用到 5.4 的设计备忘 |
@@ -163,14 +163,15 @@
 | [diffusion-16.7 SDXL 文生图](../quest-diffusion-16-sdxl/diffusion-16.7-sdxl-txt2img.md) | SDXL | [10.7 Inpaint 与 Outpaint](../../tutorial/phase-10-txt2img/10.7-inpaint-outpaint.md) |  |
 | [diffusion-17.1 运行 SD 1.5、Flux、Qwen-Image](../quest-diffusion-17-sdcpp-compare/diffusion-17.1-sdcpp-models.md) | 后端对照：stable-diffusion.cpp | [16.6 Qwen-Image 文生图](../../tutorial/phase-16-qwen-image/16.6-qwen-txt2img.md) | 依赖主线阶段 13 的 `backend=sdcpp` 与阶段 15、16 的自研实现 |
 | [diffusion-17.2 后端对比](../quest-diffusion-17-sdcpp-compare/diffusion-17.2-backend-comparison.md) | 后端对照：stable-diffusion.cpp | [16.6 Qwen-Image 文生图](../../tutorial/phase-16-qwen-image/16.6-qwen-txt2img.md) | 依赖主线阶段 13 的 `backend=sdcpp` 与阶段 15、16 的自研实现 |
-| [llm-1.1 流式输出（SSE）](../quest-llm-01-llm-app-engineering/llm-1.1-streaming-sse.md) | LLM 应用工程 | [1.2 LLM 双协议与 Provider 抽象](../../tutorial/phase-01-llm-chat/1.2-llm-providers.md) |  |
-| [llm-1.2 结构化输出与 JSON Schema 校验](../quest-llm-01-llm-app-engineering/llm-1.2-structured-output.md) | LLM 应用工程 | [1.3 Tool Calling 循环](../../tutorial/phase-01-llm-chat/1.3-tool-calling.md) |  |
-| [llm-1.3 上下文窗口与历史压缩](../quest-llm-01-llm-app-engineering/llm-1.3-context-window.md) | LLM 应用工程 | [1.5 Discord 机器人](../../tutorial/phase-01-llm-chat/1.5-discord-bot.md) |  |
-| [llm-1.4 提示缓存与用量统计](../quest-llm-01-llm-app-engineering/llm-1.4-prompt-cache-usage.md) | LLM 应用工程 | [1.5 Discord 机器人](../../tutorial/phase-01-llm-chat/1.5-discord-bot.md) | 用量存进表需要主线 1.7（也可先放内存） |
-| [llm-1.5 重试、限流与降级](../quest-llm-01-llm-app-engineering/llm-1.5-retry-fallback.md) | LLM 应用工程 | [1.2 LLM 双协议与 Provider 抽象](../../tutorial/phase-01-llm-chat/1.2-llm-providers.md) |  |
-| [llm-1.6 提示注入与工具权限](../quest-llm-01-llm-app-engineering/llm-1.6-prompt-injection.md) | LLM 应用工程 | [1.6 LLM 视觉输入](../../tutorial/phase-01-llm-chat/1.6-vision-input.md) |  |
-| [llm-1.7 录制与回放测试](../quest-llm-01-llm-app-engineering/llm-1.7-record-replay.md) | LLM 应用工程 | [1.3 Tool Calling 循环](../../tutorial/phase-01-llm-chat/1.3-tool-calling.md) |  |
-| [llm-1.8 聊天历史进阶：版本迁移、事务与脱敏](../quest-llm-01-llm-app-engineering/llm-1.8-chat-history-sqlite.md) | LLM 应用工程 | [1.7 聊天历史持久化（SQLite）](../../tutorial/phase-01-llm-chat/1.7-chat-history.md) | 封装方式到时选定（C API、SQLiteCpp、sqlite-orm）；消息格式见 1.2；事务对应 1.3 的回滚设计，取最近 N 条与 llm-1.3（上下文压缩）配合 |
+| [llm-1.1 libcurl 三种用法的对比（easy、multi、share）](../quest-llm-01-llm-app-engineering/llm-1.1-curl-modes.md) | LLM 应用工程 | [1.1 HTTP 与 JSON](../../tutorial/phase-01-llm-chat/1.1-http-json.md) |  |
+| [llm-1.2 流式输出（SSE）](../quest-llm-01-llm-app-engineering/llm-1.2-streaming-sse.md) | LLM 应用工程 | [1.2 LLM 双协议与 Provider 抽象](../../tutorial/phase-01-llm-chat/1.2-llm-providers.md) |  |
+| [llm-1.3 结构化输出与 JSON Schema 校验](../quest-llm-01-llm-app-engineering/llm-1.3-structured-output.md) | LLM 应用工程 | [1.3 Tool Calling 循环](../../tutorial/phase-01-llm-chat/1.3-tool-calling.md) |  |
+| [llm-1.4 上下文窗口与历史压缩](../quest-llm-01-llm-app-engineering/llm-1.4-context-window.md) | LLM 应用工程 | [1.5 Discord 机器人](../../tutorial/phase-01-llm-chat/1.5-discord-bot.md) |  |
+| [llm-1.5 提示缓存与用量统计](../quest-llm-01-llm-app-engineering/llm-1.5-prompt-cache-usage.md) | LLM 应用工程 | [1.5 Discord 机器人](../../tutorial/phase-01-llm-chat/1.5-discord-bot.md) | 用量存进表需要主线 1.7（也可先放内存） |
+| [llm-1.6 重试、限流与降级](../quest-llm-01-llm-app-engineering/llm-1.6-retry-fallback.md) | LLM 应用工程 | [1.2 LLM 双协议与 Provider 抽象](../../tutorial/phase-01-llm-chat/1.2-llm-providers.md) |  |
+| [llm-1.7 提示注入与工具权限](../quest-llm-01-llm-app-engineering/llm-1.7-prompt-injection.md) | LLM 应用工程 | [1.6 LLM 视觉输入](../../tutorial/phase-01-llm-chat/1.6-vision-input.md) |  |
+| [llm-1.8 录制与回放测试](../quest-llm-01-llm-app-engineering/llm-1.8-record-replay.md) | LLM 应用工程 | [1.3 Tool Calling 循环](../../tutorial/phase-01-llm-chat/1.3-tool-calling.md) |  |
+| [llm-1.9 聊天历史进阶：版本迁移、事务与脱敏](../quest-llm-01-llm-app-engineering/llm-1.9-chat-history-sqlite.md) | LLM 应用工程 | [1.7 聊天历史持久化（SQLite）](../../tutorial/phase-01-llm-chat/1.7-chat-history.md) | 封装方式到时选定（C API、SQLiteCpp、sqlite-orm）；消息格式见 1.2；事务对应 1.3 的回滚设计，取最近 N 条与 llm-1.4（上下文压缩）配合 |
 | [llm-2.1 并行工具调用](../quest-llm-02-agent-advanced/llm-2.1-parallel-tool-calls.md) | Agent 进阶 | [1.3 Tool Calling 循环](../../tutorial/phase-01-llm-chat/1.3-tool-calling.md) |  |
 | [llm-2.2 嵌入与向量检索](../quest-llm-02-agent-advanced/llm-2.2-embeddings-search.md) | Agent 进阶 | [1.2 LLM 双协议与 Provider 抽象](../../tutorial/phase-01-llm-chat/1.2-llm-providers.md) |  |
 | [llm-2.3 长期记忆：用户偏好](../quest-llm-02-agent-advanced/llm-2.3-long-term-memory.md) | Agent 进阶 | [1.5 Discord 机器人](../../tutorial/phase-01-llm-chat/1.5-discord-bot.md) |  |
@@ -180,7 +181,7 @@
 | [llm-2.7 节点图校验与自我纠错](../quest-llm-02-agent-advanced/llm-2.7-graph-self-repair.md) | Agent 进阶 | [2.6 调用记录与工作流导出](../../tutorial/phase-02-opencv-handles/2.6-workflow-recording.md) |  |
 | [llm-2.8 规划与子任务](../quest-llm-02-agent-advanced/llm-2.8-planner-worker.md) | Agent 进阶 | [2.7 视觉反馈闭环](../../tutorial/phase-02-opencv-handles/2.7-vision-feedback-loop.md) |  |
 | [llm-2.9 搜索聊天历史（全文检索）](../quest-llm-02-agent-advanced/llm-2.9-history-search.md) | Agent 进阶 | [1.7 聊天历史持久化（SQLite）](../../tutorial/phase-01-llm-chat/1.7-chat-history.md) | 与 llm-2.2 对比 |
-| [llm-2.10 让 LLM 查自己的历史](../quest-llm-02-agent-advanced/llm-2.10-history-tool.md) | Agent 进阶 | [1.7 聊天历史持久化（SQLite）](../../tutorial/phase-01-llm-chat/1.7-chat-history.md) | 依赖 llm-2.9；与 llm-1.6（提示注入）配合 |
+| [llm-2.10 让 LLM 查自己的历史](../quest-llm-02-agent-advanced/llm-2.10-history-tool.md) | Agent 进阶 | [1.7 聊天历史持久化（SQLite）](../../tutorial/phase-01-llm-chat/1.7-chat-history.md) | 依赖 llm-2.9；与 llm-1.7（提示注入）配合 |
 | [llm-3.1 提示词扩写与风格库](../quest-llm-03-llm-image-craft/llm-3.1-prompt-expansion.md) | 用 LLM 改进出图 | [10.4 Skills 与 Discord 演示](../../tutorial/phase-10-txt2img/10.4-skills-discord-demo.md) |  |
 | [llm-3.2 反推提示词（图转文）](../quest-llm-03-llm-image-craft/llm-3.2-reverse-prompt.md) | 用 LLM 改进出图 | [10.4 Skills 与 Discord 演示](../../tutorial/phase-10-txt2img/10.4-skills-discord-demo.md) |  |
 | [llm-3.3 视觉评审回路](../quest-llm-03-llm-image-craft/llm-3.3-critic-loop.md) | 用 LLM 改进出图 | [10.4 Skills 与 Discord 演示](../../tutorial/phase-10-txt2img/10.4-skills-discord-demo.md) | 在 2.7 的视觉反馈闭环之上加评分清单与停止条件 |
@@ -192,18 +193,18 @@
 | [llm-4.2 渐进式披露](../quest-llm-04-skills-advanced/llm-4.2-progressive-disclosure.md) | Skills 进阶 | [1.4 Skill 机制：按需加载的能力](../../tutorial/phase-01-llm-chat/1.4-skills.md) |  |
 | [llm-4.3 说明怎么写：让模型选对 Skill](../quest-llm-04-skills-advanced/llm-4.3-skill-descriptions.md) | Skills 进阶 | [1.4 Skill 机制：按需加载的能力](../../tutorial/phase-01-llm-chat/1.4-skills.md) |  |
 | [llm-4.4 Skill 自带的资源与脚本](../quest-llm-04-skills-advanced/llm-4.4-skill-resources.md) | Skills 进阶 | [1.4 Skill 机制：按需加载的能力](../../tutorial/phase-01-llm-chat/1.4-skills.md) | 依赖 llm-5.2、llm-5.3（脚本放进受限环境，沙箱见 llm-05） |
-| [llm-4.5 权限与沙箱](../quest-llm-04-skills-advanced/llm-4.5-skill-permissions.md) | Skills 进阶 | [1.4 Skill 机制：按需加载的能力](../../tutorial/phase-01-llm-chat/1.4-skills.md) | 与 llm-1.6（提示注入与工具权限）配合 |
+| [llm-4.5 权限与沙箱](../quest-llm-04-skills-advanced/llm-4.5-skill-permissions.md) | Skills 进阶 | [1.4 Skill 机制：按需加载的能力](../../tutorial/phase-01-llm-chat/1.4-skills.md) | 与 llm-1.7（提示注入与工具权限）配合 |
 | [llm-4.6 热重载与版本](../quest-llm-04-skills-advanced/llm-4.6-skill-hot-reload.md) | Skills 进阶 | [1.4 Skill 机制：按需加载的能力](../../tutorial/phase-01-llm-chat/1.4-skills.md) |  |
 | [llm-4.7 从录制生成 Skill](../quest-llm-04-skills-advanced/llm-4.7-skill-from-recording.md) | Skills 进阶 | [2.6 调用记录与工作流导出](../../tutorial/phase-02-opencv-handles/2.6-workflow-recording.md) |  |
-| [llm-4.8 Skill 评测与回归](../quest-llm-04-skills-advanced/llm-4.8-skill-evals.md) | Skills 进阶 | [1.4 Skill 机制：按需加载的能力](../../tutorial/phase-01-llm-chat/1.4-skills.md) | 依赖 llm-4.3；用 llm-1.7 的录制回放让评测可重复 |
+| [llm-4.8 Skill 评测与回归](../quest-llm-04-skills-advanced/llm-4.8-skill-evals.md) | Skills 进阶 | [1.4 Skill 机制：按需加载的能力](../../tutorial/phase-01-llm-chat/1.4-skills.md) | 依赖 llm-4.3；用 llm-1.8 的录制回放让评测可重复 |
 | [llm-4.9 打包与分发](../quest-llm-04-skills-advanced/llm-4.9-skill-packaging.md) | Skills 进阶 | [1.4 Skill 机制：按需加载的能力](../../tutorial/phase-01-llm-chat/1.4-skills.md) |  |
-| [llm-5.1 沙箱的威胁模型](../quest-llm-05-sandbox/llm-5.1-threat-model.md) | 沙箱与脚本编排 | [1.3 Tool Calling 循环](../../tutorial/phase-01-llm-chat/1.3-tool-calling.md) | 与 llm-1.6（提示注入与工具权限）配合 |
+| [llm-5.1 沙箱的威胁模型](../quest-llm-05-sandbox/llm-5.1-threat-model.md) | 沙箱与脚本编排 | [1.3 Tool Calling 循环](../../tutorial/phase-01-llm-chat/1.3-tool-calling.md) | 与 llm-1.7（提示注入与工具权限）配合 |
 | [llm-5.2 嵌入脚本语言与白名单函数](../quest-llm-05-sandbox/llm-5.2-embedded-script.md) | 沙箱与脚本编排 | [1.3 Tool Calling 循环](../../tutorial/phase-01-llm-chat/1.3-tool-calling.md) |  |
 | [llm-5.3 资源限制：时间、内存与指令数](../quest-llm-05-sandbox/llm-5.3-resource-limits.md) | 沙箱与脚本编排 | [1.3 Tool Calling 循环](../../tutorial/phase-01-llm-chat/1.3-tool-calling.md) | 依赖 llm-5.2 |
 | [llm-5.4 子进程沙箱（Windows）](../quest-llm-05-sandbox/llm-5.4-process-sandbox.md) | 沙箱与脚本编排 | [1.3 Tool Calling 循环](../../tutorial/phase-01-llm-chat/1.3-tool-calling.md) | 与 llm-5.2 对照 |
 | [llm-5.5 用脚本编排工具调用](../quest-llm-05-sandbox/llm-5.5-script-orchestration.md) | 沙箱与脚本编排 | [1.3 Tool Calling 循环](../../tutorial/phase-01-llm-chat/1.3-tool-calling.md) | 依赖 llm-5.2、llm-5.3；与 llm-4.5（Skill 权限）配合 |
 | [llm-5.6 调用预算与失败回报](../quest-llm-05-sandbox/llm-5.6-call-budget.md) | 沙箱与脚本编排 | [1.3 Tool Calling 循环](../../tutorial/phase-01-llm-chat/1.3-tool-calling.md) | 依赖 llm-5.5 |
-| [llm-5.7 沙箱逃逸测试](../quest-llm-05-sandbox/llm-5.7-escape-tests.md) | 沙箱与脚本编排 | [1.3 Tool Calling 循环](../../tutorial/phase-01-llm-chat/1.3-tool-calling.md) | 依赖 llm-5.2 至 llm-5.5；用 llm-1.7 的录制回放 |
+| [llm-5.7 沙箱逃逸测试](../quest-llm-05-sandbox/llm-5.7-escape-tests.md) | 沙箱与脚本编排 | [1.3 Tool Calling 循环](../../tutorial/phase-01-llm-chat/1.3-tool-calling.md) | 依赖 llm-5.2 至 llm-5.5；用 llm-1.8 的录制回放 |
 | [llm-5.8 sandbox Skill](../quest-llm-05-sandbox/llm-5.8-sandbox-skill.md) | 沙箱与脚本编排 | [1.4 Skill 机制：按需加载的能力](../../tutorial/phase-01-llm-chat/1.4-skills.md) | 依赖 llm-5.5、llm-4.1（Skill 文件格式）、llm-4.5（权限声明） |
 | [platform-1.1 Linux 工具链与环境检查](../quest-platform-01-linux-foundation/platform-1.1-toolchain-check.md) | Linux 阶段 0 | [0.5 DLL 集中管理与依赖检查](../../tutorial/phase-00-toolchain/0.5-dll-management.md) |  |
 | [platform-1.2 Linux 的 CMake 平台文件](../quest-platform-01-linux-foundation/platform-1.2-cmake-linux.md) | Linux 阶段 0 | [0.5 DLL 集中管理与依赖检查](../../tutorial/phase-00-toolchain/0.5-dll-management.md) | 在主线已拆分的平台文件的基础上加 linux.cmake（见 0.1） |
@@ -339,9 +340,9 @@
 | diffusion-05 | diffusion-02 | 硬依赖 | 5.5 PAG / SAG 依赖 2.1 | 包含 |
 | diffusion-08 | diffusion-02 | 硬依赖 | 8.5 Prompt-to-Prompt 依赖 2.3 | 包含 |
 | diffusion-11 | diffusion-08 | 硬依赖 | 11.5 依赖 8.5 与 11.3 | 包含 |
-| llm-04 | llm-01 | 硬依赖 | 4.8 用 llm-1.7 的录制回放让评测可重复 | 包含（llm-01 的末端，再合入主线 2.6） |
-| llm-05 | llm-01 | 硬依赖 | 5.7 用 llm-1.7 的录制回放 | 包含（起点是 llm-01 的末端） |
-| diffusion-15 | llm-01 | 硬依赖 | 15.7 用 llm-1.7 的录制回放让评测可重复 | 包含（llm-01 的末端，再合入主线 10.7） |
+| llm-04 | llm-01 | 硬依赖 | 4.8 用 llm-1.8 的录制回放让评测可重复 | 包含（llm-01 的末端，再合入主线 2.6） |
+| llm-05 | llm-01 | 硬依赖 | 5.7 用 llm-1.8 的录制回放 | 包含（起点是 llm-01 的末端） |
+| diffusion-15 | llm-01 | 硬依赖 | 15.7 用 llm-1.8 的录制回放让评测可重复 | 包含（llm-01 的末端，再合入主线 10.7） |
 | llm-04 | llm-05 | 硬依赖 | 4.4 的脚本放进 llm-05 的沙箱（llm-5.2、5.3）；4.5 与 llm-5.5 配合 | 不包含，见下面的“交错推进” |
 | llm-05 | llm-04 | 硬依赖 | 5.8 用 llm-4.1 的文件格式与 llm-4.5 的权限声明 | 不包含，见下面的“交错推进” |
 | diffusion-15 | diffusion-03 | 可选 | 15.5 区域提示见 diffusion-3.5，不做则用整体提示 | 不包含 |

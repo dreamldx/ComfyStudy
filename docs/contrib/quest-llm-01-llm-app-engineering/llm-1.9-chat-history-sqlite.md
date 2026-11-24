@@ -1,6 +1,6 @@
-# llm-1.8 聊天历史进阶：版本迁移、事务与脱敏
+# llm-1.9 聊天历史进阶：版本迁移、事务与脱敏
 
-- 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/llm-01-llm-app-engineering`（支线不打 tag，用 `git log quest/llm-01-llm-app-engineering --grep="^chapter-llm-1.8"` 定位本章提交）
+- 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/llm-01-llm-app-engineering`（支线不打 tag，用 `git log quest/llm-01-llm-app-engineering --grep="^chapter-llm-1.9"` 定位本章提交）
 - 所属支线：[支线 llm-01：LLM 应用工程](README.md)
 - 可开始于：主线 [1.7 聊天历史持久化（SQLite）](../../tutorial/phase-01-llm-chat/1.7-chat-history.md)
 - 一句话目标：在主线 1.7 已有的表上加三件事：用 `user_version` 记录表结构版本并写升级脚本；一轮 agent 循环的所有消息在一个事务里写入，出错就回滚，不留悬空的工具调用；历史里不存令牌和密钥（用户消息里出现的也要先脱敏）
@@ -15,7 +15,7 @@
 
 ## 3. 本章改动
 
-待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-llm-1.8-chat-history-sqlite:` 开头，可用 `git show --stat` 查看。）
+待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-llm-1.9-chat-history-sqlite:` 开头，可用 `git show --stat` 查看。）
 
 ## 4. 关键代码讲解
 

@@ -1,9 +1,9 @@
-# llm-1.6 提示注入与工具权限
+# llm-1.4 上下文窗口与历史压缩
 
-- 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/llm-01-llm-app-engineering`（支线不打 tag，用 `git log quest/llm-01-llm-app-engineering --grep="^chapter-llm-1.6"` 定位本章提交）
+- 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/llm-01-llm-app-engineering`（支线不打 tag，用 `git log quest/llm-01-llm-app-engineering --grep="^chapter-llm-1.4"` 定位本章提交）
 - 所属支线：[支线 llm-01：LLM 应用工程](README.md)
-- 可开始于：主线 [1.6 LLM 视觉输入](../../tutorial/phase-01-llm-chat/1.6-vision-input.md)
-- 一句话目标：演示图片和用户文本里藏指令的攻击，用工具白名单、危险工具二次确认和输出隔离来防御
+- 可开始于：主线 [1.5 Discord 机器人](../../tutorial/phase-01-llm-chat/1.5-discord-bot.md)
+- 一句话目标：估算 token 数，窗口放不下时用滑动窗口和摘要压缩旧对话，并保证工具调用与结果成对保留
 
 ## 1. 本章目标与成果
 
@@ -15,7 +15,7 @@
 
 ## 3. 本章改动
 
-待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-llm-1.6-prompt-injection:` 开头，可用 `git show --stat` 查看。）
+待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-llm-1.4-context-window:` 开头，可用 `git show --stat` 查看。）
 
 ## 4. 关键代码讲解
 
