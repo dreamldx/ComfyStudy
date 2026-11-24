@@ -49,6 +49,11 @@ target_link_libraries(comfystudy PRIVATE comfystudy_core)
 add_executable(asio_demo demo/asio_demo.cpp)
 target_link_libraries(asio_demo PRIVATE comfystudy_asio)
 
+# Measures the ways to send many requests with libcurl (side quest chapter llm-1.2). Not part of the program.
+add_executable(curl_bench bench/curl_bench.cpp)
+target_include_directories(curl_bench PRIVATE tests)  # for the small test server
+target_link_libraries(curl_bench PRIVATE comfystudy_core httplib::httplib)
+
 # Targets that exist on one system only (defined by the platform file, now that the program exists).
 comfystudy_platform_targets()
 

@@ -45,4 +45,5 @@
   - `http::Share`：让多个线程的句柄共享 DNS 缓存和 TLS 会话（share；不共享连接缓存，共享连接缓存时 libcurl 会崩）。
   - vcpkg 的 `curl[http2]`，以及 `Options::version` 可以强制 HTTP/1.1 或 HTTP/2。
   - `tests/test_http_modes.cpp`：9 个测试，本机用 cpp-httplib 起一个小服务器。
+  - `bench/curl_bench.cpp`（目标 `curl_bench`，不属于机器人程序）：在本机服务器（每个请求等 300 ms）和真实的模型服务上，比较顺序发送、线程池、`Share`、`Session` 和 multi 等发送方式的总耗时与新建连接数。用法：`curl_bench local N DELAY_MS THREADS REPS`、`curl_bench llm N THREADS any|1.1|2`（真实服务的地址和密钥从 `config.ini` 读，不会打印）。
 - 文档：[platform-2.2 libcurl 三种用法：在事件循环里的实现与对比（Windows）](https://dreamldx.github.io/ComfyStudy/contrib/quest-platform-02-event-loop-network/platform-2.2-curl-modes/)
