@@ -14,7 +14,7 @@
 
 ## 3. 本章改动
 
-待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-diffusion-N.M-slug:` 开头，可用 `git show --stat` 查看。）
+待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-diffusion-N.M-slug:` 开头，可用 `git show --stat` 查看。本章提交同时更新分支根目录的 `README.md`：写本章实现的目的、要点说明和本章文档的链接。）
 
 ## 4. 关键代码讲解
 
