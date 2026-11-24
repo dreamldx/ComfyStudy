@@ -21,7 +21,7 @@
 - 一个基准程序 `curl_bench`：本机服务器上的对比，真实服务（OpenRouter、Anthropic）上的对比，以及四个只读的探测（三家服务对 HTTP/2 怎么说、空闲的连接活多久、流式请求在 HTTP/2 下怎么到达、12 到 300 个请求同时在途时多路复用怎么样）。
 - 结论：机器人默认用 curl 线程方案，理由和数据在第 6、7 节。
 
-本章只测了 POST 一个完整回答的情形，没有做限流（429）的实验；流式输出留给 llm-1.4；`Transport` 接口留给 llm-1.3。
+本章只测了 POST 一个完整回答的情形，没有做限流（429）的实验；流式输出留给 llm-1.3；`Transport` 接口放进重写后的主线 1.1。
 
 ## 2. 背景与概念
 
@@ -720,7 +720,7 @@ openai: ok, HTTP version code 3 (3 = HTTP/2), status 200, content-type text/even
 9 pieces of data, 5640 bytes; the first arrived after 337 ms, the last after 450 ms
 ```
 
-两家的流式在 HTTP/2 下都能正常到达，类型是 `text/event-stream`。到达的块有多粗，要看服务和中间的网关怎么攒数据：Anthropic 这次只有两大块，OpenRouter 是九块。事件边界的处理留给 llm-1.4，这里只确认流在 HTTP/2 上能用。
+两家的流式在 HTTP/2 下都能正常到达，类型是 `text/event-stream`。到达的块有多粗，要看服务和中间的网关怎么攒数据：Anthropic 这次只有两大块，OpenRouter 是九块。事件边界的处理留给 llm-1.3，这里只确认流在 HTTP/2 上能用。
 
 ### 5.6 多路复用：12 到 300 个请求同时在途
 
@@ -842,7 +842,7 @@ Anthropic：
 - 对比线程池方案：同样 12 个请求，线程池方案受线程数限制，4 个线程要 3 轮，是 curl 线程方案的两倍时间；要追上 curl 线程方案就得开 12 个线程。curl 线程方案只多一个线程，请求数不受限。更重要的是 线程池方案不能取消一个正在进行的请求：Discord 里用户发 `/cancel` 或者要“停”，请求还要在池线程里一直等到它自己结束或超时，那个线程在这段时间里什么也干不了。
 - 对比 socket_action 方案：curl 线程方案和 socket_action 方案在所有测量里一样快。socket_action 方案少一个线程，但代码多约三分之一，而且有平台相关的坑（Windows 上要多等一个事件），必须只在事件循环线程上用。curl 线程方案的线程安全靠 libcurl 明确保证可以跨线程调用的 `curl_multi_wakeup`，坑少。省下的一个线程不值得。
 - 保留 socket_action 方案：如果以后想要进程里一个额外线程都没有，socket_action 方案是可用的，测试已经覆盖了它。保留线程池方案：最简单，工具里偶尔发一个请求、不需要取消的地方可以直接用。
-- 这个结论会用来重写主线 1.1：`Post` 变成返回 `awaitable<Response>` 的函数，背后用 curl 线程方案；下一章 llm-1.3 把它抽成 `Transport` 接口。
+- 这个结论会用来重写主线 1.1：`Post` 变成返回 `awaitable<Response>` 的函数，背后用 curl 线程方案；同时把它抽成 `Transport` 接口，取消、错误分类、日志脱敏和契约测试都在那里讲。
 
 **其他的取舍：**
 
@@ -850,7 +850,7 @@ Anthropic：
 - 为什么 HTTP/2 不是选择的理由：几个到十几个请求时它对总耗时没有影响（回答时间远大于建立连接的时间），影响的是连接数（12 变 1），而 curl 线程方案和 socket_action 方案本来就能享受到。请求更多时两家服务表现不同（5.6）：Anthropic 上 HTTP/2 不慢，300 个并发时明显更快；OpenRouter 上 100 个并发时一条连接的尾部变慢。所以默认让 libcurl 自己选（`Version::kAny`，服务支持就用 HTTP/2），发现某个服务有问题时再退回 HTTP/1.1。
 - libcurl 8.23.0，vcpkg 的 `curl[http2]` 带上 nghttp2 1.71.0，Windows 上 TLS 用 Schannel。HTTP/2 版本代码在 libcurl 里是 `CURL_HTTP_VERSION_2_0 = 3`，不是 2。
 - 被否决的：libcurl 的 `curl_multi_socket_action` 配 libuv（没有协程支持，也不是我们的事件循环）；单独为每个请求开线程（线程数跟着请求数涨）；`Share` 加 `CURL_LOCK_DATA_CONNECT`（崩溃）。
-- 限流（429）没有测，也就没有测“12 个同时发会不会被服务限流”：本章的 12 个请求在两家服务上都没有遇到限流。线程池或 multi 的并发数要不要设上限，留给 llm-1.8（重试、限流与降级）。
+- 限流（429）没有测，也就没有测“12 个同时发会不会被服务限流”：本章的 12 个请求在两家服务上都没有遇到限流。线程池或 multi 的并发数要不要设上限，留给 llm-1.7（重试、限流与降级）。
 
 ## 8. 常见问题与坑
 
@@ -894,4 +894,4 @@ Anthropic：
 
 ## 11. 下一章预告
 
-下一章 llm-1.3 把 `Post` 抽成 `Transport` 接口：签名是 `asio::awaitable<Response> Post(PostRequest, Options)`，时钟可以注入，本章的三个客户端都成为它的实现，再写一套契约测试跑遍所有实现。接口里还要定下取消如何传到在途的请求、传输层的错误怎么分类（可重试、不可重试，供重试使用），以及日志里怎么对 `Authorization` 脱敏。
+下一章 llm-1.3 是流式输出（SSE）：不等整个回答，边收边显示，Discord 里用限速的消息编辑模拟打字效果。它建立在本章选定的 curl 线程方案上：流式的数据块在 curl 线程的写回调里到达，回调里只把数据搬走，不做解析和等待，其余的事情交给事件循环。

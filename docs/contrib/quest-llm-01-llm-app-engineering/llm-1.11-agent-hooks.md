@@ -1,6 +1,6 @@
-# llm-1.12 Agent 循环的钩子（中间件）
+# llm-1.11 Agent 循环的钩子（中间件）
 
-- 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/llm-01-llm-app-engineering`（支线不打 tag，用 `git log quest/llm-01-llm-app-engineering --grep="^chapter-llm-1.12"` 定位本章提交）
+- 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/llm-01-llm-app-engineering`（支线不打 tag，用 `git log quest/llm-01-llm-app-engineering --grep="^chapter-llm-1.11"` 定位本章提交）
 - 所属支线：[支线 llm-01：LLM 应用工程](README.md)
 - 可开始于：主线 [1.4 工具运行时：注册、校验与执行](../../tutorial/phase-01-llm-chat/1.4-tool-runtime.md)
 - 一句话目标：在 Agent 循环的固定位置（模型调用前后、工具调用前后）留出钩子，把脱敏、预算、轨迹、权限确认做成钩子，而不是写进循环；讲清钩子的执行顺序、能不能短路（比如确认被拒绝就不执行工具）、钩子自己出错怎么办；与 Agent 事件的区别是事件只观察，钩子可以改写和中止；用假 Provider 测试钩子；依赖主线 1.3、1.4
@@ -15,7 +15,7 @@
 
 ## 3. 本章改动
 
-待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-llm-1.12-agent-hooks:` 开头，可用 `git show --stat` 查看。）
+待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-llm-1.11-agent-hooks:` 开头，可用 `git show --stat` 查看。）
 
 ## 4. 关键代码讲解
 
