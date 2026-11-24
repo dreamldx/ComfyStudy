@@ -1,7 +1,7 @@
 # 阶段 1：LLM 与对话通道
 
 - 类型：主线
-- 状态：未开始
+- 状态：进行中（已完成 1.1）
 - 阶段 tag：`phase-01-llm-chat`（阶段开始时打在主线上；阶段完成后在 GitHub 上发布 Release）
 - 完成标准：在 Discord 里与机器人对话，它能调用玩具工具并回答，也能看懂用户发来的图片，重启后能接着聊
 
@@ -9,7 +9,7 @@
 
 | 编号 | 章节 | tag | 目标 |
 |---|---|---|---|
-| 1.1 | [HTTP 与 JSON](1.1-http-json.md) | `chapter-1.1-http-json` | 用 libcurl 发请求，对比 OpenAI 与 Anthropic 的消息格式 |
+| 1.1 | [HTTP 与 JSON](1.1-http-json.md) | `chapter-1.1-http-json` | 用 libcurl 发出异步的 HTTP 请求：定义 `Transport` 接口和它的 libcurl 实现（错误分类、取消、日志里藏起密钥都在这里定下来），把同一个问题按 OpenAI Chat Completions、OpenAI Responses 和 Anthropic Messages 三种格式发给模型，读出回答，并对比三种格式的差别 |
 | 1.2 | [LLM 双协议与 Provider 抽象](1.2-llm-providers.md) | `chapter-1.2-llm-providers` | 命令行对话接入两种协议，先读 ai-sdk-cpp 的设计再决定使用或自写 |
 | 1.3 | [Tool Calling 循环](1.3-tool-calling.md) | `chapter-1.3-tool-calling` | 用玩具工具跑通 agent 循环，对比 `tool_calls` 与 `tool_use` |
 | 1.4 | [Skill 机制：按需加载的能力](1.4-skills.md) | `chapter-1.4-skills` | 在 1.3 的循环上实现 Skill 目录、`load_skill`/`unload_skill` 与按会话动态工具集，用玩具 Skill 演示按需加载 |
