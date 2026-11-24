@@ -27,7 +27,8 @@ target_compile_options(comfystudy_options INTERFACE ${COMFYSTUDY_COMPILE_OPTIONS
 # Boost.Asio: the event loop and coroutines. _WIN32_WINNT selects the Windows 10 API; the old
 # interfaces that Asio has since replaced are switched off.
 add_library(comfystudy_asio INTERFACE)
-target_link_libraries(comfystudy_asio INTERFACE Boost::asio)
+target_link_libraries(comfystudy_asio INTERFACE Boost::asio comfystudy_options)
+target_include_directories(comfystudy_asio INTERFACE src)  # for src/event_loop.h
 target_compile_definitions(comfystudy_asio INTERFACE _WIN32_WINNT=0x0A00 BOOST_ASIO_NO_DEPRECATED)
 
 # Everything except main() lives in a static library, so tests can link it too.
@@ -43,6 +44,10 @@ target_link_libraries(comfystudy_core PUBLIC comfystudy_options comfystudy_asio
 
 add_executable(comfystudy src/main.cpp)
 target_link_libraries(comfystudy PRIVATE comfystudy_core)
+
+# A small program that shows the event loop at work (see docs: llm-1.1).
+add_executable(asio_demo demo/asio_demo.cpp)
+target_link_libraries(asio_demo PRIVATE comfystudy_asio)
 
 # Targets that exist on one system only (defined by the platform file, now that the program exists).
 comfystudy_platform_targets()
