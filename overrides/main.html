@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{#
+Left sidebar: the chapters of the phase (or the reference pages) that the current page belongs to,
+with the table of contents of the current page folded under its own entry. The home page and pages
+without a section use the full width.
+#}
+{% block content %}
+{% if page.parent and not page.is_homepage %}
+<div class="col-md-3 hidden-print" role="complementary">
+  <nav class="phase-sidebar">
+    <h5>{{ page.parent.title }}</h5>
+    <ul class="phase-nav">
+      {%- for item in page.parent.children %}
+        {%- if item.is_page %}
+        <li class="{% if item.active %}active{% endif %}">
+          <a href="{{ item.url|url }}">{{ item.title }}</a>
+          {%- if item.active and page.toc %}
+          <ul class="phase-toc">
+            {%- for h1 in page.toc %}
+              {%- for h2 in h1.children %}
+              <li><a href="{{ h2.url }}">{{ h2.title }}</a></li>
+              {%- endfor %}
+            {%- endfor %}
+          </ul>
+          {%- endif %}
+        </li>
+        {%- else %}
+        <li class="phase-group">{{ item.title }}</li>
+        {%- endif %}
+      {%- endfor %}
+    </ul>
+  </nav>
+</div>
+<div class="col-md-9" role="main">{% include "content.html" %}</div>
+{% else %}
+<div class="col-md-12" role="main">{% include "content.html" %}</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,118 @@
+<div class="navbar navbar-default navbar-fixed-top" role="navigation">
+    <div class="container">
+
+        <!-- Collapsed navigation -->
+        <div class="navbar-header">
+            {%- if nav|length>1 or (page and (page.next_page or page.previous_page)) or config.repo_url %}
+            <!-- Expander button -->
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            {% endif %}
+
+            <!-- Main title -->
+
+            {% if not config.theme.disable_nav_site_name %}
+              <a class="navbar-brand" href="{{ nav.homepage.url|url }}">{{ config.site_name }}</a>
+            {% endif %}
+        </div>
+
+        <!-- Expanded navigation -->
+        <div class="navbar-collapse collapse">
+            {%- block site_nav %}
+            {%- if nav|length>1 %}
+                <!-- Main navigation -->
+                <ul class="nav navbar-nav">
+                {% for nav_item in nav %}
+                {% if nav_item.children %}
+                    <li class="dropdown{% if nav_item.active %} active{% endif %}">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">{{ nav_item.title }} <b class="caret"></b></a>
+                        <ul class="dropdown-menu">
+                        {% for nav_item in nav_item.children %}
+                            {% include "nav-sub.html" %}
+                        {% endfor %}
+                        </ul>
+                    </li>
+                {% else %}
+                    <li {% if nav_item.active %}class="active"{% endif %}>
+                        <a href="{{ nav_item.url|url }}">{{ nav_item.title }}</a>
+                    </li>
+                {% endif %}
+                {% endfor %}
+                </ul>
+            {%- endif %}
+            {%- endblock %}
+
+            <ul class="nav navbar-nav navbar-right">
+                {%- block search_button %}
+                    {%- if 'search' in config['plugins'] and not config.theme.disable_nav_search %}
+                    <li>
+                        <a href="#" data-toggle="modal" data-target="#mkdocs_search_modal">
+                            <i class="fas fa-search"></i> Search
+                        </a>
+                    </li>
+                    {%- endif %}
+                {%- endblock %}
+
+                {%- block next_prev %}
+                    {%- if page and (page.next_page or page.previous_page) and not config.theme.disable_nav_previous_next %}
+                    <li {% if not page.previous_page %}class="disabled"{% endif %}>
+                        <a rel="prev" {% if page.previous_page %}href="{{ page.previous_page.url|url }}"{% endif %}>
+                            <i class="fas fa-arrow-left"></i> Previous
+                        </a>
+                    </li>
+                    <li {% if not page.next_page %}class="disabled"{% endif %}>
+                        <a rel="next" {% if page.next_page %}href="{{ page.next_page.url|url }}"{% endif %}>
+                            Next <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </li>
+                    {%- endif %}
+                {%- endblock %}
+
+                {#- The repository: GitHub icon, name, and the numbers of stars and forks (read from the GitHub API in the browser). #}
+                {%- block repo %}
+                    {%- if config.repo_url %}
+                    <li class="repo-widget">
+                        <a href="{{ config.repo_url }}" data-repo="{{ config.repo_url | replace('https://github.com/', '') }}">
+                            <i class="fab fa-github"></i> {{ config.repo_name }}
+                            <span class="repo-facts">
+                                <span class="repo-fact" title="Stars"><i class="fas fa-star"></i> <b data-stars></b></span>
+                                <span class="repo-fact" title="Forks"><i class="fas fa-code-branch"></i> <b data-forks></b></span>
+                            </span>
+                        </a>
+                    </li>
+                    {%- endif %}
+                {%- endblock %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+  var link = document.querySelector('.repo-widget a[data-repo]');
+  if (!link) return;
+  var repo = link.getAttribute('data-repo').replace(/\/+$/, '');
+  var facts = link.querySelector('.repo-facts');
+  function format(n) { return n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'k' : String(n); }
+  function show(d) {
+    link.querySelector('[data-stars]').textContent = format(d.stars);
+    link.querySelector('[data-forks]').textContent = format(d.forks);
+    facts.className += ' loaded';
+  }
+  var key = 'repo-facts:' + repo, cached = null;
+  try { cached = JSON.parse(sessionStorage.getItem(key)); } catch (e) {}
+  if (cached && Date.now() - cached.time < 3600 * 1000) { show(cached); return; }
+  fetch('https://api.github.com/repos/' + repo)
+    .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+    .then(function (j) {
+      var d = { stars: j.stargazers_count, forks: j.forks_count, time: Date.now() };
+      try { sessionStorage.setItem(key, JSON.stringify(d)); } catch (e) {}
+      show(d);
+    })
+    .catch(function () {});  // offline or rate limited: show the icon and the name only
+})();
+</script>
