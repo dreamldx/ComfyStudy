@@ -11,7 +11,7 @@
 
 ## 2. 背景与概念
 
-待写。
+待写。（要点：三个执行器的分工（`io` 跑网络，`blocking` 跑 SQLite 和同步调用，`gpu` 跑 GPU 工作，用 `co_await asio::post(pool, use_awaitable)` 切换）；每频道一个 `strand`，Agent 循环是跑在上面的协程；多线程 `io_context` 与 `strand` 在本章讲透，主线只写用法；用 `cancellation_signal` 取消；生命周期与关停顺序（先停接收，再等在途任务，最后停循环）；协程里没有线程局部变量，请求 ID 和频道 ID 放进显式的上下文对象；测试要确定，注入时钟或手动推进的执行器，悬空引用靠 ASan 抓，MSVC 没有 TSAN；截止时间传播：一轮对话要有总的截止时间，贯穿多次 LLM 调用和工具执行，只给单个调用设超时是不够的。）
 
 ## 3. 本章改动
 

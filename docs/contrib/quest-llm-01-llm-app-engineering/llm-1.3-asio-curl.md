@@ -11,7 +11,7 @@
 
 ## 2. 背景与概念
 
-待写。
+待写。（要点：本章落到结论：`Transport` 接口的签名和取舍（`asio::awaitable<Response> Post(PostRequest, Options)`，时钟可注入，录制回放与各种 libcurl 实现都是它的实现）；取消如何传到在途的 HTTP 请求；传输层结果带错误分类（可重试、不可重试），供重试使用；日志里对 `Authorization` 脱敏；汇总对比章得出的传输层结论；DPP 的回调在池线程里执行，用 `post` 或 `co_spawn` 转进我们的 `io_context`，不在回调里 `co_await`；`Transport` 的契约测试：同一套测试跑遍所有实现（libcurl 的三种、录制回放、假实现），保证行为一致。）
 
 ## 3. 本章改动
 
