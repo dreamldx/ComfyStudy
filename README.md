@@ -27,6 +27,12 @@ cmake --preset linux-debug
 cmake --build --preset linux-debug
 ctest --preset linux-debug
 build/linux-debug/bin/comfystudy
+
+# 在 AddressSanitizer 和 UndefinedBehaviorSanitizer 下构建和测试（多出 11 个“金丝雀”测试）
+cmake --preset linux-asan
+cmake --build --preset linux-asan
+ctest --preset linux-asan
+ctest --preset linux-asan -L canary   # 只跑金丝雀
 ```
 
 ## 本分支实现了什么
@@ -67,3 +73,14 @@ build/linux-debug/bin/comfystudy
   - `tests/env_util.h`：可移植的 `SetEnv`（空值表示删除变量）；`test_config.cpp`、`test_options.cpp` 改用它，`test_config` 里对可执行文件名的期望按系统决定。
   - 结果：`linux-debug` 和 `linux-release` 构建没有警告，`ctest` 42 个测试全部通过；`linux-asan` 能构建并运行（也顺手跑过一次测试，42 个通过，详细处理在 platform-1.4）。Windows 一侧不受影响：`windows-debug` 预设构建没有警告，`ctest` 62 个通过。
 - 文档：[platform-1.3 Linux 的 CMake 平台文件与最小移植](https://dreamldx.github.io/ComfyStudy/contrib/quest-platform-01-linux-foundation/platform-1.3-cmake-linux/)
+
+### platform-1.4 测试与 Sanitizer
+
+- 提交：`chapter-platform-1.4-tests-sanitizers:`
+- 目的：`linux-asan` 下的测试全部通过，不等于 sanitizer 在工作。这一章用“金丝雀”证明它真的能抓到错误，并带上调用栈。
+- 说明：
+  - `tests/sanitizer_canaries.cpp`：一个小程序，参数选择一种错误，共 11 种：堆越界、释放后使用、栈越界、返回后使用栈变量、全局越界、重复释放、内存泄漏，以及有符号整数溢出、移位过大、除以零、空指针。错误值经过 `volatile` 和 `noinline` 函数，编译器看不出来，所以在 `-O0`、`-O2`、`-O3` 下都能通过 `-Wall -Wextra -Werror`。
+  - `cmake/platform/linux.cmake`：缓存变量 `COMFYSTUDY_CANARIES`（开了 sanitizer 就默认打开）；在 `comfystudy_platform_tests()` 里为每种错误登记一个测试 `canary.<名字>`，带标签 `canary`，用 `PASS_REGULAR_EXPRESSION` 要求输出里有 sanitizer 的那句话，没有就失败。开 `address` 登记 7 个，开 `undefined` 登记 4 个。
+  - `cmake/presets/linux.json`：`linux-asan` 的测试预设带环境变量 `UBSAN_OPTIONS=print_stacktrace=1` 和 `ASAN_OPTIONS=detect_leaks=1`。
+  - 结果：`linux-asan` 有 53 个测试（42 个原有，11 个金丝雀）全部通过；`linux-debug` 和 `linux-release` 仍是 42 个。没有 sanitizer 时手动打开金丝雀，11 个全部失败。
+- 文档：[platform-1.4 测试与 Sanitizer](https://dreamldx.github.io/ComfyStudy/contrib/quest-platform-01-linux-foundation/platform-1.4-tests-sanitizers/)

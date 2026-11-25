@@ -49,6 +49,14 @@
   "testPresets": [
     { "name": "linux-debug", "configurePreset": "linux-debug", "output": { "outputOnFailure": true } },
     { "name": "linux-release", "configurePreset": "linux-release", "output": { "outputOnFailure": true } },
-    { "name": "linux-asan", "configurePreset": "linux-asan", "output": { "outputOnFailure": true } }
+    {
+      "name": "linux-asan",
+      "configurePreset": "linux-asan",
+      "output": { "outputOnFailure": true },
+      "environment": {
+        "UBSAN_OPTIONS": "print_stacktrace=1",
+        "ASAN_OPTIONS": "detect_leaks=1"
+      }
+    }
   ]
 }

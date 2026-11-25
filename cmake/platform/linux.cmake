@@ -17,6 +17,16 @@ if(COMFYSTUDY_SANITIZE)
   add_link_options(-fsanitize=${COMFYSTUDY_SANITIZE})
 endif()
 
+# Canaries: tests/sanitizer_canaries.cpp triggers one bug per run, and one test per bug passes only if the sanitizer
+# reports it. On by default when a sanitizer is on. Turning it on without a sanitizer makes every canary fail,
+# which is how you see that the check notices a missing sanitizer.
+if(COMFYSTUDY_SANITIZE)
+  set(comfystudy_canaries_default ON)
+else()
+  set(comfystudy_canaries_default OFF)
+endif()
+set(COMFYSTUDY_CANARIES ${comfystudy_canaries_default} CACHE BOOL "Build the sanitizer canaries and register their tests")
+
 # Third-party libraries come from vcpkg (see vcpkg.json); the preset points CMake at its toolchain file.
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(CURL CONFIG REQUIRED)
@@ -33,6 +43,38 @@ set(COMFYSTUDY_PLATFORM_LIBRARIES "")
 function(comfystudy_platform_targets)
 endfunction()
 
-# Called by tests/CMakeLists.txt once add_comfystudy_test exists: the tests that run on Linux only. None yet.
+# One canary test: runs sanitizer_canaries with the name of the bug, and passes only if the output has the sentence
+# the sanitizer prints for that bug. The exit code does not matter, so a plain crash does not pass.
+function(comfystudy_add_canary name sentence)
+  add_test(NAME canary.${name} COMMAND sanitizer_canaries ${name})
+  set_tests_properties(canary.${name} PROPERTIES PASS_REGULAR_EXPRESSION "${sentence}" LABELS canary)
+endfunction()
+
+# Called by tests/CMakeLists.txt once add_comfystudy_test exists: the tests that run on Linux only, which are the
+# canaries. They are registered for the sanitizers that are on (all of them when none is, so that they fail).
 function(comfystudy_platform_tests)
+  if(NOT COMFYSTUDY_CANARIES)
+    return()
+  endif()
+  add_executable(sanitizer_canaries sanitizer_canaries.cpp)
+  target_link_libraries(sanitizer_canaries PRIVATE comfystudy_options)
+
+  # AddressSanitizer, and LeakSanitizer which comes with it.
+  if(NOT COMFYSTUDY_SANITIZE OR COMFYSTUDY_SANITIZE MATCHES "address")
+    comfystudy_add_canary(heap-overflow "AddressSanitizer: heap-buffer-overflow")
+    comfystudy_add_canary(heap-use-after-free "AddressSanitizer: heap-use-after-free")
+    comfystudy_add_canary(stack-overflow "AddressSanitizer: stack-buffer-overflow")
+    comfystudy_add_canary(stack-use-after-return "AddressSanitizer: stack-use-after-return")
+    comfystudy_add_canary(global-overflow "AddressSanitizer: global-buffer-overflow")
+    comfystudy_add_canary(double-free "AddressSanitizer: attempting double-free")
+    comfystudy_add_canary(leak "LeakSanitizer: detected memory leaks")
+  endif()
+
+  # UndefinedBehaviorSanitizer.
+  if(NOT COMFYSTUDY_SANITIZE OR COMFYSTUDY_SANITIZE MATCHES "undefined")
+    comfystudy_add_canary(signed-overflow "runtime error: signed integer overflow")
+    comfystudy_add_canary(shift "runtime error: shift exponent")
+    comfystudy_add_canary(div-zero "runtime error: division by zero")
+    comfystudy_add_canary(null "runtime error: load of null pointer")
+  endif()
 endfunction()
