@@ -1,9 +1,9 @@
 # 阶段 0：工具链与骨架
 
 - 类型：主线
-- 状态：已完成（0.0 至 0.5）
+- 状态：已完成（0.0 至 0.6）
 - 阶段 tag：`phase-00-toolchain`（阶段开始时打在主线上；阶段完成后在 GitHub 上发布 Release）
-- 完成标准：运行程序时输出已加载的配置项名称，并能列出程序加载的每个 DLL 的位置、版本和所属的 vcpkg 包
+- 完成标准：运行程序时输出已加载的配置项名称，能列出程序加载的每个 DLL 的位置、版本和所属的 vcpkg 包，并能检测 GPU 是否可用
 
 ## 本阶段章节
 
@@ -15,6 +15,7 @@
 | 0.3 | [vcpkg 依赖管理](0.3-vcpkg-deps.md) | `chapter-0.3-vcpkg-deps` | 用 vcpkg manifest 引入 nlohmann/json、libcurl、GoogleTest、spdlog 和 CLI11，并接入 CMake，把测试迁移到 GoogleTest |
 | 0.4 | [命令行与配置文件](0.4-cli-config.md) | `chapter-0.4-cli-config` | 用 CLI11 读取命令行、配置文件（INI 或 TOML）和环境变量，优先级为环境变量 < 配置文件 < 命令行，打印配置，用 spdlog 记录加载过程，密钥遮蔽 |
 | 0.5 | [DLL 集中管理与依赖检查](0.5-dll-management.md) | `chapter-0.5-dll-management` | 让所有 DLL 与可执行文件放在同一目录，提供 `deploy` 与 `check-dlls` 目标，启动时设置 DLL 搜索目录，用 `--dependency-check` 列出已加载 DLL 的位置、版本和所属 vcpkg 包 |
+| 0.6 | [检测 GPU 与 CUDA 驱动](0.6-gpu-check.md) | `chapter-0.6-gpu-check` | 在项目里默认检测 GPU 能不能用：写一个只依赖 NVIDIA 驱动的探针 `gpu_probe`（不要 `nvcc`，不要 `cuda.h`，Windows 与 Linux 同一份源码），它作为 CTest 测试随项目运行，并给 `check-env.ps1` 加 `-Gpu` |
 
 ## 阶段总览
 
@@ -27,6 +28,7 @@
 - 用 vcpkg 的 manifest 模式管理依赖（nlohmann/json、libcurl、GoogleTest、spdlog、CLI11）。
 - 用 CLI11 同时读取命令行、配置文件（INI 或 TOML）和环境变量，并把密钥遮蔽起来。
 - 知道 Windows 怎么找 DLL，让程序的 DLL 集中在一个目录，并能检查、列出它们。
+- 确认程序能用上 GPU：只依赖驱动的探针 `gpu_probe`，作为测试随项目运行，也能用 `check-env.ps1 -Gpu` 单独检查。
 
 核心概念：预设与构建目录、静态库与可执行文件、测试夹具、manifest 与基线、配置的优先级（环境变量 < 配置文件 < 命令行）、DLL 搜索顺序与清单。
 
