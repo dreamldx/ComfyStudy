@@ -21,7 +21,7 @@
 - 一个基准程序 `curl_bench`：本机服务器上的对比，真实服务（OpenRouter、Anthropic）上的对比，以及四个只读的探测（三家服务对 HTTP/2 怎么说、空闲的连接活多久、流式请求在 HTTP/2 下怎么到达、12 到 300 个请求同时在途时多路复用怎么样）。
 - 结论：机器人默认用 curl 线程方案，理由和数据在第 6、7 节。
 
-本章只测了 POST 一个完整回答的情形，没有做限流（429）的实验；流式输出留给 llm-1.3；`Transport` 接口在主线 1.1。
+本章只测了 POST 一个完整回答的情形，没有做限流（429）的实验；流式输出留给 llm-1.4；`Transport` 接口在主线 1.1。
 
 ## 2. 背景与概念
 
@@ -661,7 +661,7 @@ openai: ok, HTTP version code 3 (3 = HTTP/2), status 200, content-type text/even
 9 pieces of data, 5640 bytes; the first arrived after 337 ms, the last after 450 ms
 ```
 
-两家的流式在 HTTP/2 下都能正常到达，类型是 `text/event-stream`。到达的块有多粗，要看服务和中间的网关怎么攒数据：Anthropic 这次只有两大块，OpenRouter 是九块。事件边界的处理留给 llm-1.3，这里只确认流在 HTTP/2 上能用。
+两家的流式在 HTTP/2 下都能正常到达，类型是 `text/event-stream`。到达的块有多粗，要看服务和中间的网关怎么攒数据：Anthropic 这次只有两大块，OpenRouter 是九块。事件边界的处理留给 llm-1.4，这里只确认流在 HTTP/2 上能用。
 
 ### 5.6 多路复用：12 到 300 个请求同时在途
 
@@ -791,7 +791,7 @@ Anthropic：
 - 为什么 HTTP/2 不是选择的理由：几个到十几个请求时它对总耗时没有影响（回答时间远大于建立连接的时间），影响的是连接数（12 变 1），而 curl 线程方案和 socket_action 方案本来就能享受到。请求更多时两家服务表现不同（5.6）：Anthropic 上 HTTP/2 不慢，300 个并发时明显更快；OpenRouter 上 100 个并发时一条连接的尾部变慢。所以默认让 libcurl 自己选（`Version::kAny`，服务支持就用 HTTP/2），发现某个服务有问题时再退回 HTTP/1.1。
 - libcurl 8.23.0，vcpkg 的 `curl[http2]` 带上 nghttp2 1.71.0，Windows 上 TLS 用 Schannel。HTTP/2 版本代码在 libcurl 里是 `CURL_HTTP_VERSION_2_0 = 3`，不是 2。
 - 被否决的：libcurl 的 `curl_multi_socket_action` 配 libuv（没有协程支持，也不是我们的事件循环）；单独为每个请求开线程（线程数跟着请求数涨）；`Share` 加 `CURL_LOCK_DATA_CONNECT`（崩溃）。
-- 限流（429）没有测，也就没有测“12 个同时发会不会被服务限流”：本章的 12 个请求在两家服务上都没有遇到限流。线程池或 multi 的并发数要不要设上限，留给 llm-1.7（重试、限流与降级）。
+- 限流（429）没有测，也就没有测“12 个同时发会不会被服务限流”：本章的 12 个请求在两家服务上都没有遇到限流。线程池或 multi 的并发数要不要设上限，留给 llm-1.3（重试、限流与降级）。
 
 ## 8. 常见问题与坑
 
@@ -835,4 +835,4 @@ Anthropic：
 
 ## 11. 下一章预告
 
-下一章 llm-1.3 是流式输出（SSE）：不等整个回答，边收边显示，Discord 里用限速的消息编辑模拟打字效果。它建立在本章选定的 curl 线程方案上：流式的数据块在 curl 线程的写回调里到达，回调里只把数据搬走，不做解析和等待，其余的事情交给事件循环。
+下一章 llm-1.4 是流式输出（SSE）：不等整个回答，边收边显示，Discord 里用限速的消息编辑模拟打字效果。它建立在本章选定的 curl 线程方案上：流式的数据块在 curl 线程的写回调里到达，回调里只把数据搬走，不做解析和等待，其余的事情交给事件循环。
