@@ -229,6 +229,30 @@ TEST_F(OptionsTest, HelpListsTheOptionsAndStopsWithExitCodeZero) {
   EXPECT_NE(out_.str().find("OPENAI_MODEL"), std::string::npos);  // the environment variable
 }
 
+#if defined(_WIN32)
+TEST(CommandLine, WideCharactersBecomeUtf8) {
+  EXPECT_EQ(options::WideToUtf8(L"plain"), "plain");
+  EXPECT_EQ(options::WideToUtf8(L"你好"), "\xE4\xBD\xA0\xE5\xA5\xBD");
+  EXPECT_EQ(options::WideToUtf8(L"\U0001F600"), "\xF0\x9F\x98\x80");
+  EXPECT_EQ(options::WideToUtf8(L""), "");
+}
+#endif
+
+TEST_F(OptionsTest, ChatFlag) {
+  const auto result = Run({"--chat"});
+  EXPECT_FALSE(result.exit_code.has_value());
+  EXPECT_TRUE(result.options.chat);
+  EXPECT_FALSE(Run({}).options.chat);
+}
+
+TEST_F(OptionsTest, ChatAndPromptTogetherAreAnError) {
+  const auto result = Run({"--chat", "--prompt", "hi"});
+  ASSERT_TRUE(result.exit_code.has_value());
+  EXPECT_NE(*result.exit_code, 0);
+  EXPECT_NE(err_.str().find("--chat"), std::string::npos);
+  EXPECT_NE(err_.str().find("--prompt"), std::string::npos);
+}
+
 TEST_F(OptionsTest, ParsingNeverWritesSecretValuesToTheOutput) {
   TempFile file("openai_api_key = topsecretvalue123\n", ".ini");
   Run({"--config", file.str(), "--discord_token", "anothersecret456"});

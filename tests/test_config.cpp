@@ -64,6 +64,7 @@ TEST(ConfigKnownKeys, TheKeysInOrderWithTheRightOnesSecret) {
   const std::vector<Expected> expected = {
       {"discord_token", "DISCORD_TOKEN", "", true},
       {"llm_provider", "LLM_PROVIDER", "openai", false},
+      {"llm_reasoning", "LLM_REASONING", "off", false},
       {"openai_api", "OPENAI_API", "chat", false},
       {"openai_model", "OPENAI_MODEL", "", false},
       {"openai_api_key", "OPENAI_API_KEY", "", true},

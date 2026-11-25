@@ -5,7 +5,37 @@
 
 #include <CLI/CLI.hpp>
 
+#if defined(_WIN32)
+#include <windows.h>
+#include <shellapi.h>
+#endif
+
 namespace options {
+
+#if defined(_WIN32)
+std::string WideToUtf8(const std::wstring& text) {
+  if (text.empty()) return "";
+  const int size = WideCharToMultiByte(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), nullptr, 0, nullptr, nullptr);
+  std::string utf8(static_cast<std::size_t>(size), '\0');
+  WideCharToMultiByte(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), utf8.data(), size, nullptr, nullptr);
+  return utf8;
+}
+#endif
+
+std::vector<std::string> Arguments(int argc, char** argv) {
+#if defined(_WIN32)
+  int count = 0;
+  LPWSTR* wide = CommandLineToArgvW(GetCommandLineW(), &count);
+  if (wide != nullptr) {
+    std::vector<std::string> args;
+    for (int i = 1; i < count; ++i) args.push_back(WideToUtf8(wide[i]));
+    LocalFree(wide);
+    return args;
+  }
+#endif
+  return std::vector<std::string>(argv + 1, argv + argc);
+}
+
 namespace {
 
 constexpr std::string_view kBom = "\xEF\xBB\xBF";
@@ -47,7 +77,8 @@ Result Parse(const std::vector<std::string>& args,
   }
   app.add_flag("-v,--verbose", result.options.verbose, "Show debug messages");
   app.add_option("--prompt", result.options.prompt, "Ask the model this question, print the answer and exit");
-  app.add_option("--system", result.options.system, "An instruction for the model, used with --prompt");
+  app.add_option("--system", result.options.system, "An instruction for the model, used with --prompt or --chat");
+  app.add_flag("--chat", result.options.chat, "Talk with the model: one line, one answer, until /exit (try /help)");
 #if defined(_WIN32)
   app.add_flag("--dependency-check", result.options.dependency_check,
                "List the DLLs this program loaded (where from, version, vcpkg package) and exit");
@@ -67,6 +98,12 @@ Result Parse(const std::vector<std::string>& args,
   }
 
   if (config_option->count() > 0) result.options.config_file = config_option->as<std::string>();
+
+  if (result.options.chat && !result.options.prompt.empty()) {
+    err << "error: --chat and --prompt cannot be used together\n";
+    result.exit_code = 1;
+    return result;
+  }
 
   // The command line and the config file are already applied (CLI11 gives the command line
   // priority). What is still empty falls back to the environment, then to the built-in default.

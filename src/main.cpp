@@ -8,6 +8,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include "chat.h"
 #include "config.h"
 #include "curl_transport.h"
 #include "greeting.h"
@@ -34,7 +35,7 @@ int main(int argc, char** argv) {
   // immediately) stay in the order the program produced them even when stdout is redirected.
   std::cout << std::unitbuf;
 
-  const std::vector<std::string> args(argv + 1, argv + argc);
+  const std::vector<std::string> args = options::Arguments(argc, argv);
   const auto candidates =
       config::ConfigCandidates(config::ExeDirectory(), std::filesystem::current_path());
   const options::Result parsed = options::Parse(args, candidates, std::cout, std::cerr);
@@ -50,6 +51,28 @@ int main(int argc, char** argv) {
   spdlog::set_pattern("[%l] %v");
   if (parsed.options.verbose) spdlog::set_level(spdlog::level::debug);
 
+  if (parsed.options.chat) {
+    try {
+      const config::Values& values = parsed.options.values;
+      const std::vector<llm::Provider> providers = llm::Providers(values);
+      if (providers.empty()) {
+        std::cerr << "error: no provider is configured: set openai_model, openai_api_key and openai_base_url, "
+                     "or anthropic_model, anthropic_api_key and anthropic_base_url\n";
+        return 1;
+      }
+      const std::string start = llm::DefaultProviderName(values);
+      llm::MakeProvider(values, start);  // throws and names the missing setting when the chosen one is incomplete
+      llm::UseUtf8Console();
+      const auto transport = http::MakeCurlTransport();
+      llm::RunChat(*transport, providers, start, llm::OptionsFromSettings(values), parsed.options.system, std::cin,
+                   std::cout, std::cerr);
+      return 0;
+    } catch (const std::exception& e) {
+      std::cerr << "error: " << e.what() << '\n';
+      return 1;
+    }
+  }
+
   if (!parsed.options.prompt.empty()) {
     try {
       // Ask is a coroutine: start it on an event loop and run the loop until it is done.
@@ -60,7 +83,7 @@ int main(int argc, char** argv) {
           boost::asio::use_future);
       io.run();
       const llm::Reply reply = answer.get();  // throws what Ask threw
-      std::cout << reply.text << '\n';
+      std::cout << reply.Text() << '\n';
       spdlog::info("stopped because: {}; tokens in/out: {}/{}", reply.stop_reason,
                    reply.input_tokens.value_or(-1), reply.output_tokens.value_or(-1));
       return 0;

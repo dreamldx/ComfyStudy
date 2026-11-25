@@ -5,78 +5,33 @@
 #include <string>
 
 namespace llm {
-namespace {
 
-const std::string& Setting(const config::Values& settings, const char* name) {
-  static const std::string empty;
-  const auto found = settings.find(name);
-  return found == settings.end() ? empty : found->second;
-}
-
-const std::string& Required(const config::Values& settings, const char* name) {
-  const std::string& value = Setting(settings, name);
-  if (value.empty()) {
-    throw Error(std::string("setting \"") + name + "\" is not set (config file, environment variable " +
-                config::EnvName(name) + " or --" + name + ")");
-  }
-  return value;
-}
-
-}  // namespace
-
-Protocol ChooseProtocol(const config::Values& settings) {
-  const std::string& provider = Setting(settings, "llm_provider");
-  if (provider == "anthropic") return Protocol::kAnthropic;
-  if (provider != "openai") {
-    throw Error("llm_provider must be \"openai\" or \"anthropic\", not \"" + provider + "\"");
-  }
-  const std::string& api = Setting(settings, "openai_api");
-  if (api.empty() || api == "chat") return Protocol::kOpenAIChat;  // Chat Completions is the default
-  if (api == "responses") return Protocol::kOpenAIResponses;
-  throw Error("openai_api must be \"chat\" or \"responses\", not \"" + api + "\"");
-}
-
-boost::asio::awaitable<Reply> Ask(http::Transport& transport, const config::Values& settings,
-                                  const std::string& prompt, const std::string& system) {
-  const Protocol protocol = ChooseProtocol(settings);
-
-  Request request;
-  request.system = system;
-  request.prompt = prompt;
-
-  Endpoint endpoint;
-  HttpRequest (*build)(const Endpoint&, const Request&) = nullptr;
+boost::asio::awaitable<Reply> Generate(http::Transport& transport, const Provider& provider,
+                                       const Conversation& conversation, const Options& options) {
+  HttpRequest (*build)(const Provider&, const Conversation&, const Options&) = nullptr;
   Reply (*parse)(const std::string&) = nullptr;
   std::string (*error_text)(const std::string&) = nullptr;
-  switch (protocol) {
+  switch (provider.protocol) {
     case Protocol::kOpenAIChat:
+      build = openai_chat::BuildRequest;
+      parse = openai_chat::ParseReply;
+      error_text = openai_chat::ErrorText;
+      break;
     case Protocol::kOpenAIResponses:
-      request.model = Required(settings, "openai_model");
-      endpoint.base_url = Required(settings, "openai_base_url");
-      endpoint.api_key = Required(settings, "openai_api_key");
-      if (protocol == Protocol::kOpenAIChat) {
-        build = openai_chat::BuildRequest;
-        parse = openai_chat::ParseReply;
-        error_text = openai_chat::ErrorText;
-      } else {
-        build = openai_responses::BuildRequest;
-        parse = openai_responses::ParseReply;
-        error_text = openai_responses::ErrorText;
-      }
+      build = openai_responses::BuildRequest;
+      parse = openai_responses::ParseReply;
+      error_text = openai_responses::ErrorText;
       break;
     case Protocol::kAnthropic:
-      request.model = Required(settings, "anthropic_model");
-      endpoint.base_url = Required(settings, "anthropic_base_url");
-      endpoint.api_key = Required(settings, "anthropic_api_key");
       build = anthropic::BuildRequest;
       parse = anthropic::ParseReply;
       error_text = anthropic::ErrorText;
       break;
   }
 
-  const HttpRequest http_request = build(endpoint, request);
+  const HttpRequest http_request = build(provider, conversation, options);
   // The headers carry the API key: they are logged only with the secrets blanked out. The bodies
-  // hold just the question and the answer.
+  // hold just the conversation and the answer.
   spdlog::debug("POST {}", http_request.url);
   for (const http::Header& header : http::Redacted(http_request.headers)) {
     spdlog::debug("request header {}: {}", header.first, header.second);
@@ -94,6 +49,16 @@ boost::asio::awaitable<Reply> Ask(http::Transport& transport, const config::Valu
     throw Error(message);
   }
   co_return parse(response.body);
+}
+
+boost::asio::awaitable<Reply> Ask(http::Transport& transport, const config::Values& settings,
+                                  const std::string& prompt, const std::string& system) {
+  const Provider provider = MakeProvider(settings, DefaultProviderName(settings));
+  const Options options = OptionsFromSettings(settings);
+  Conversation conversation;
+  conversation.system = system;
+  conversation.messages.push_back({Role::kUser, {TextBlock{prompt}}});
+  co_return co_await Generate(transport, provider, conversation, options);
 }
 
 }  // namespace llm

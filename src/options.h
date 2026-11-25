@@ -10,11 +10,21 @@
 
 namespace options {
 
+// The command-line arguments after the program name, as UTF-8. On Windows, main() receives them in
+// the ANSI code page, which turns Chinese text into something else; there they are read again from
+// the wide command line.
+std::vector<std::string> Arguments(int argc, char** argv);
+
+#if defined(_WIN32)
+std::string WideToUtf8(const std::wstring& text);
+#endif
+
 struct Options {
   config::Values values;                          // every known key, resolved (see Parse)
   bool verbose = false;                           // -v / --verbose
   std::string prompt;                             // --prompt: ask the model one question and exit
   std::string system;                             // --system: an instruction that goes with it
+  bool chat = false;                              // --chat: a conversation on the command line
 #if defined(_WIN32)
   bool dependency_check = false;                  // --dependency-check (Windows only)
 #endif
