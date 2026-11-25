@@ -186,6 +186,47 @@ make_fake "$dir/vcpkg-root" vcpkg 'exit 1'
 run_check "$dir" --no-smoke
 expect "vcpkg does not run" 1 "MISSING vcpkg: cannot run"
 
+# --gpu: nvidia-smi is faked; tools/gpu-probe needs a real compiler and a real GPU, so --no-smoke skips it here
+# (the probe itself is the gpu_probe test of the main project and runs on the real machine).
+make_smi() {
+  make_fake "$1" nvidia-smi "case \"\$1\" in --query-gpu*) echo \"NVIDIA RTX 4000 SFF Ada Generation, 620.70.10\";; *) echo \"| NVIDIA-SMI 620.70.10   Driver Version: 620.70.10   $2 |\";; esac"
+}
+
+dir="$(new_good_dir)"
+run_check "$dir" --no-smoke
+expect_absent "without --gpu nvidia-smi is not looked at" "nvidia-smi"
+
+dir="$(new_good_dir)"
+make_smi "$dir" "CUDA UMD Version: 13.5"
+run_check "$dir" --no-smoke --gpu
+expect "--gpu with a working driver" 0 "OK      nvidia-smi: NVIDIA RTX 4000 SFF Ada Generation, 620.70.10, supports CUDA 13.5" "check-env: OK"
+
+dir="$(new_good_dir)"
+make_smi "$dir" "CUDA Version: 12.9"
+run_check "$dir" --no-smoke --gpu
+expect "--gpu reads the older 'CUDA Version' wording" 0 "supports CUDA 12.9"
+
+dir="$(new_good_dir)"
+run_check "$dir" --no-smoke --gpu
+expect "--gpu without nvidia-smi" 1 "MISSING nvidia-smi: no NVIDIA driver found" "check-env: FAILED, missing: nvidia-smi"
+expect_absent "no apt command is suggested for a missing driver" "sudo apt install"
+
+dir="$(new_good_dir)"
+make_fake "$dir" nvidia-smi 'echo "NVIDIA-SMI has failed because it could not communicate with the NVIDIA driver."; exit 9'
+run_check "$dir" --no-smoke --gpu
+expect "--gpu when nvidia-smi cannot talk to the driver" 1 "MISSING nvidia-smi: cannot talk to the driver (NVIDIA-SMI has failed"
+
+dir="$(new_good_dir)"
+make_smi "$dir" "no version here"
+run_check "$dir" --no-smoke --gpu
+expect "--gpu when the CUDA version cannot be read" 1 "MISSING nvidia-smi: cannot read the GPU name or the CUDA version"
+
+dir="$(new_good_dir)"
+make_smi "$dir" "CUDA UMD Version: 13.5"
+make_fake "$dir" nvcc 'echo "Cuda compilation tools, release 13.5, V13.5.37"'
+run_check "$dir" --no-smoke --gpu
+expect_absent "nvcc is not checked, whether it is there or not" "nvcc"
+
 # The compiler is pinned in two places; they must name the same major version.
 script_text="$(<"$script")"
 toolchain_text="$(<"$here/../../cmake/toolchains/linux-gcc.cmake")"

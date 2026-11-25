@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Checks that the tools the project needs are present and usable on Linux.
-# Usage: scripts/check-env.sh [--no-smoke]
-#   --no-smoke  only look at the tools; skip the two small test compilations
+# Usage: scripts/check-env.sh [--no-smoke] [--gpu]
+#   --no-smoke  only look at the tools; skip the small test compilations
+#   --gpu       also check the GPU through the NVIDIA driver (nvidia-smi, then tools/gpu-probe)
 # vcpkg is found through the environment variable VCPKG_ROOT ($VCPKG_ROOT/vcpkg), not through PATH.
 # Exit 0 only if every check passes; otherwise lists what is missing, suggests how to get it, and exits 1.
 # It only checks and prints a suggestion. It never installs anything and never changes the system.
@@ -9,18 +10,23 @@ set -u
 
 # The compiler is pinned by its major version and always called by its versioned name (g++-N), never
 # through the g++ alias, so a distribution that moves its default compiler does not change what we use.
-# nvcc (chapter platform-1.5) must accept this major version as its host compiler.
 # The same number is in cmake/toolchains/linux-gcc.cmake; tests/scripts/test-check-env.sh checks that they agree.
 GCC_MAJOR=16
 CMAKE_MIN_MAJOR=3
 CMAKE_MIN_MINOR=25
 
+script_dir="${BASH_SOURCE[0]%/*}"
+[ "$script_dir" = "${BASH_SOURCE[0]}" ] && script_dir=.
+script_dir="$(cd "$script_dir" && pwd)"  # absolute: cmake resolves a relative toolchain file path elsewhere
+
 smoke=1
+gpu=0
 for argument in "$@"; do
   case "$argument" in
     --no-smoke) smoke=0 ;;
+    --gpu) gpu=1 ;;
     *)
-      echo "usage: scripts/check-env.sh [--no-smoke]"
+      echo "usage: scripts/check-env.sh [--no-smoke] [--gpu]"
       exit 2
       ;;
   esac
@@ -255,6 +261,66 @@ if [ "$smoke" -eq 1 ] && command -v "g++-$GCC_MAJOR" > /dev/null 2>&1; then
   esac
 fi
 
+# --gpu: the GPU as the NVIDIA driver sees it. nvidia-smi names the card and says which CUDA version the driver
+# supports; tools/gpu-probe (the same program the main project runs as the gpu_probe test, here configured on its
+# own with the pinned g++) calls the driver the way a program would. Only the driver is needed: nvcc and cuDNN are
+# not checked, the chapters that use them check them. The driver itself is not installed by this script.
+run_gpu() {
+  local smi card full cuda="" probe_dir probe_out step device
+  smi="$(command -v nvidia-smi 2>/dev/null)"
+  if [ -z "$smi" ]; then
+    echo "MISSING nvidia-smi: no NVIDIA driver found (install the driver for your distribution first)"
+    missing+=(nvidia-smi)
+    return
+  fi
+  if ! card="$("$smi" --query-gpu=name,driver_version --format=csv,noheader 2>&1)"; then
+    printf 'MISSING nvidia-smi: cannot talk to the driver (%s)\n' "$(first_line "$card")"
+    missing+=(nvidia-smi)
+    return
+  fi
+  full="$("$smi" 2>&1)"
+  if [[ "$full" =~ CUDA\ (UMD\ )?Version:[[:space:]]*([0-9]+\.[0-9]+) ]]; then
+    cuda="${BASH_REMATCH[2]}"
+  fi
+  card="$(first_line "$card")"
+  if [ -z "$card" ] || [ -z "$cuda" ]; then
+    echo "MISSING nvidia-smi: cannot read the GPU name or the CUDA version"
+    missing+=(nvidia-smi)
+    return
+  fi
+  printf 'OK      nvidia-smi: %s, supports CUDA %s\n' "$card" "$cuda"
+  [ "$smoke" -eq 1 ] || return
+
+  local source_dir="$script_dir/../tools/gpu-probe"
+  probe_dir="$(mktemp -d)" || { echo "MISSING gpu: cannot create a temporary directory"; missing+=(gpu); return; }
+  # shellcheck disable=SC2064
+  trap "rm -rf '$probe_dir'" RETURN
+  step=configure
+  probe_out="$(cmake -S "$source_dir" -B "$probe_dir" -G Ninja \
+    -DCMAKE_TOOLCHAIN_FILE="$script_dir/../cmake/toolchains/linux-gcc.cmake" 2>&1)"
+  if [ $? -eq 0 ] && [[ "$probe_out" != *"no CUDA driver library found"* ]]; then
+    step=build
+    if probe_out="$(cmake --build "$probe_dir" 2>&1)"; then
+      step=run
+      probe_out="$("$probe_dir/gpu_probe" 2>&1)"
+      if [ $? -eq 0 ]; then
+        while IFS= read -r device; do
+          if [[ "$device" == "device 0: "* ]]; then
+            printf 'OK      gpu: %s, context created\n' "${device#device 0: }"
+          fi
+        done <<< "$probe_out"
+        return
+      fi
+    fi
+  fi
+  printf 'MISSING gpu: %s failed\n' "$step"
+  printf '%s\n' "$probe_out" | grep -v '^$' | tail -n 3 | sed 's/^/        /'
+  missing+=(gpu)
+}
+if [ "$gpu" -eq 1 ]; then
+  run_gpu
+fi
+
 if [ "${#missing[@]}" -gt 0 ]; then
   names="${missing[*]}"
   echo "check-env: FAILED, missing: ${names// /, }"
@@ -263,8 +329,6 @@ if [ "${#missing[@]}" -gt 0 ]; then
   fi
   if [ "$vcpkg_missing" -eq 1 ]; then
     # Check vcpkg out at the baseline of the project's vcpkg.json, so its scripts and the ports are from the same time.
-    script_dir="${BASH_SOURCE[0]%/*}"
-    [ "$script_dir" = "${BASH_SOURCE[0]}" ] && script_dir=.
     checkout=""
     if [ -r "$script_dir/../vcpkg.json" ]; then
       manifest="$(<"$script_dir/../vcpkg.json")"

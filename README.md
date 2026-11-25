@@ -1,7 +1,7 @@
 # ComfyStudy · 支线 platform-01：Linux 阶段 0
 
 这是支线分支 `quest/platform-01-linux-foundation`。它不合并回 `main`，也不打 tag、不发 Release。
-起点是主线 tag `chapter-0.5-dll-management`；每一章对应一个或几个提交，提交信息以 `chapter-platform-1.N-` 开头，
+起点是主线 tag `chapter-0.6-gpu-check`；每一章对应一个或几个提交，提交信息以 `chapter-platform-1.N-` 开头，
 用 `git log --grep="^chapter-platform-1.1"` 可以找到本章的提交。
 本分支在 Debian sid（x86_64、glibc、NVIDIA 显卡）上实现和验证。
 
@@ -16,6 +16,7 @@
 ```bash
 scripts/check-env.sh                 # 检查工具链和 vcpkg，并做两次小的试编译
 scripts/check-env.sh --no-smoke      # 只检查工具，不试编译
+scripts/check-env.sh --gpu           # 另外检查 GPU（nvidia-smi 和 tools/gpu-probe）
 bash tests/scripts/test-check-env.sh # 这个脚本自己的测试
 
 # 第一次：按 check-env.sh 最后一行的提示装好 vcpkg，然后（VCPKG_ROOT 要先设好）
@@ -84,3 +85,15 @@ ctest --preset linux-asan -L canary   # 只跑金丝雀
   - `cmake/presets/linux.json`：`linux-asan` 的测试预设带环境变量 `UBSAN_OPTIONS=print_stacktrace=1` 和 `ASAN_OPTIONS=detect_leaks=1`。
   - 结果：`linux-asan` 有 53 个测试（42 个原有，11 个金丝雀）全部通过；`linux-debug` 和 `linux-release` 仍是 42 个。没有 sanitizer 时手动打开金丝雀，11 个全部失败。
 - 文档：[platform-1.4 测试与 Sanitizer](https://dreamldx.github.io/ComfyStudy/contrib/quest-platform-01-linux-foundation/platform-1.4-tests-sanitizers/)
+
+### platform-1.5 GPU 与 CUDA 驱动
+
+- 提交：`chapter-platform-1.5-cuda-env:`
+- 目的：确认这台 Linux 机器上，一个普通的程序能用上显卡。只检查驱动这一层，不装 CUDA 工具包和 cuDNN（用到 `nvcc` 的章节再装、再检查）。
+- 说明：
+  - `tools/gpu-probe/` 是主线 0.6 创建的探针，这里原样使用：用 `find_library` 找到驱动自带的 `libcuda.so`，调用 Driver API 建出主上下文；主项目的 `CMakeLists.txt` 已经加入它，测试名 `gpu_probe`。
+  - `scripts/check-env.sh --gpu`：在原有检查之后，读 `nvidia-smi`（显卡、驱动版本、驱动支持的 CUDA 版本），再用固定的 `g++-16` 单独配置、构建、运行探针。不带 `--gpu` 时输出和以前相同；`--no-smoke` 跳过探针。
+  - `tests/scripts/test-check-env.sh`：增加到 29 个用例，用假的 `nvidia-smi` 测试各种情况；脚本不检查 `nvcc`。
+  - `cmake/presets/linux.json`：`linux-asan` 的测试预设里 `ASAN_OPTIONS` 加了 `protect_shadow_gap=0`。AddressSanitizer 默认保护的影子内存间隙，会让 CUDA 驱动在 `cuInit` 里报“内存不足”（返回 2）。
+  - 结果：三个预设的测试各多 1 个，`linux-debug` 和 `linux-release` 是 43 个，`linux-asan` 是 54 个，全部通过，构建 0 个警告。
+- 文档：[platform-1.5 GPU 与 CUDA 环境](https://dreamldx.github.io/ComfyStudy/contrib/quest-platform-01-linux-foundation/platform-1.5-cuda-env/)
