@@ -18,9 +18,9 @@
 | llm-1.6 | [提示缓存与用量统计](llm-1.6-prompt-cache-usage.md) | `chapter-llm-1.6-prompt-cache-usage:` | 读取响应里的用量字段，按频道统计费用（用量存进表后用 SQL 汇总，见主线 1.9；想试分析型数据库，可把同样的统计用 DuckDB 再做一遍作为练习）；让固定的系统提示与工具列表命中缓存并量化节省 |
 | llm-1.7 | [重试、限流与降级](llm-1.7-retry-fallback.md) | `chapter-llm-1.7-retry-fallback:` | 指数退避加抖动，尊重服务端的限流提示，主 Provider 持续失败时切到备用 Provider |
 | llm-1.8 | [提示注入与工具权限](llm-1.8-prompt-injection.md) | `chapter-llm-1.8-prompt-injection:` | 演示图片和用户文本里藏指令的攻击，用工具白名单、危险工具二次确认和输出隔离来防御 |
-| llm-1.9 | [录制与回放测试](llm-1.9-record-replay.md) | `chapter-llm-1.9-record-replay:` | 把 LLM 的请求和响应录成文件，测试时用假 Provider 回放，让 agent 循环的测试不花钱、可重复 |
+| llm-1.9 | [录制与回放测试](llm-1.9-record-replay.md) | `chapter-llm-1.9-record-replay:` | 把 LLM 的请求和响应录成文件，测试时用假 Transport 回放，让 agent 循环的测试不花钱、可重复 |
 | llm-1.10 | [聊天历史进阶：版本迁移、事务与脱敏](llm-1.10-chat-history-sqlite.md) | `chapter-llm-1.10-chat-history-sqlite:` | 在主线 1.9 已有的表上加三件事：用 `user_version` 记录表结构版本并写升级脚本；一轮 agent 循环的所有消息在一个事务里写入，出错就回滚，不留悬空的工具调用；历史里不存令牌和密钥（用户消息里出现的也要先脱敏） |
-| llm-1.11 | [Agent 循环的钩子（中间件）](llm-1.11-agent-hooks.md) | `chapter-llm-1.11-agent-hooks:` | 在 Agent 循环的固定位置（模型调用前后、工具调用前后）留出钩子，把脱敏、预算、轨迹、权限确认做成钩子，而不是写进循环；讲清钩子的执行顺序、能不能短路（比如确认被拒绝就不执行工具）、钩子自己出错怎么办；与 Agent 事件的区别是事件只观察，钩子可以改写和中止；用假 Provider 测试钩子；依赖主线 1.3、1.4 |
+| llm-1.11 | [Agent 循环的钩子（中间件）](llm-1.11-agent-hooks.md) | `chapter-llm-1.11-agent-hooks:` | 在 Agent 循环的固定位置（模型调用前后、工具调用前后）留出钩子，把脱敏、预算、轨迹、权限确认做成钩子，而不是写进循环；讲清钩子的执行顺序、能不能短路（比如确认被拒绝就不执行工具）、钩子自己出错怎么办；与 Agent 事件的区别是事件只观察，钩子可以改写和中止；用假 Transport 测试钩子；依赖主线 1.3、1.4 |
 
 ## 阶段总览
 

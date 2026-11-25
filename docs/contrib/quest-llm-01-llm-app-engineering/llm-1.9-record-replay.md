@@ -3,7 +3,7 @@
 - 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/llm-01-llm-app-engineering`（支线不打 tag，用 `git log quest/llm-01-llm-app-engineering --grep="^chapter-llm-1.9"` 定位本章提交）
 - 所属支线：[支线 llm-01：LLM 应用工程](README.md)
 - 可开始于：主线 [1.3 Tool Calling 循环](../../tutorial/phase-01-llm-chat/1.3-tool-calling.md)
-- 一句话目标：把 LLM 的请求和响应录成文件，测试时用假 Provider 回放，让 agent 循环的测试不花钱、可重复
+- 一句话目标：把 LLM 的请求和响应录成文件，测试时用假 Transport 回放，让 agent 循环的测试不花钱、可重复
 
 ## 1. 本章目标与成果
 
