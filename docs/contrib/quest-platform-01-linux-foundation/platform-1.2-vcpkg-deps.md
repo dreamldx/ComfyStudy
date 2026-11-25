@@ -386,7 +386,7 @@ check-env tests: 21 passed, 0 failed
   - 把工具链文件里的主版本临时改成 15（机器上有 `gcc-15`，没有 `g++-15`），再运行安装：失败，vcpkg 报 `error: while detecting compiler information` 和 `vcpkg was unable to detect the active compiler's information`。说明编译器确实由三元组的链式工具链决定。改回 16 后恢复。
   - 在本地把工具链文件里的主版本改成 15，再跑测试：一致性用例失败（脚本是 16，工具链文件是 15），其余用例通过。（这一步是在加 `make` 和 `perl` 的用例之前做的，当时一共 18 个用例，17 个通过。）
   - 去掉 `perl` 的那一行检查：缺 `perl` 和 `perl` 加载不了 `IPC::Cmd` 两个用例失败。
-- 版本对比（Windows 一侧是用 Visual Studio 自带的 vcpkg，对项目里已经装好的库执行 `vcpkg list` 得到的；Linux 一侧是 `vcpkg list --x-install-root=vcpkg_installed`）：
+- 版本对比（Windows 一侧是在项目目录里运行 `scripts/dev.ps1 vcpkg list --x-install-root=vcpkg_installed`，对项目里已经装好的库得到的；Linux 一侧是 `vcpkg list --x-install-root=vcpkg_installed`）：
 
 | 端口 | Windows（x64-windows） | Linux（x64-linux-gcc） |
 |---|---|---|
