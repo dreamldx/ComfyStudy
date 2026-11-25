@@ -31,7 +31,7 @@
 | llm-04 | `quest/llm-04-skills-advanced` | 分支 `quest/llm-01-llm-app-engineering` 的末端，再合入主线 tag `chapter-2.6-workflow-recording`（4.8 用 llm-1.5 的录制回放；4.4 还需要 llm-05 的沙箱，见下面的“交错推进”） |
 | llm-05 | `quest/llm-05-sandbox` | 分支 `quest/llm-01-llm-app-engineering` 的末端（本阶段所需的最晚主线节点是 `chapter-1.4-tool-runtime`，已包含在该分支的历史中；5.7 用 llm-1.5 的录制回放） |
 | platform-01 | `quest/platform-01-linux-foundation` | 主线 tag `chapter-0.5-dll-management`（主线的 CMake 已按系统拆成平台文件，见 0.1） |
-| platform-02 | `quest/platform-02-event-loop-network` | 分支 `quest/platform-01-linux-foundation` 的末端，再合入主线 tag `chapter-1.1-http-json`（platform-01 还没有代码，现在分支直接从这个 tag 开始；2.1、2.2 是 Windows 版，2.3、2.4 是 Linux 版） |
+| platform-02 | `quest/platform-02-event-loop-network` | 分支 `quest/platform-01-linux-foundation` 的末端，再合入主线 tag `chapter-1.1-http-json`（platform-01 目前只写了 1.1、platform-02 的 Windows 部分不依赖它，现在分支直接从这个 tag 开始；2.1、2.2 是 Windows 版，2.3、2.4 是 Linux 版） |
 | platform-03 | `quest/platform-03-libtorch-linux` | 分支 `quest/platform-02-event-loop-network` 的末端，再合入主线 tag `chapter-3.1-libtorch-setup` |
 | platform-04 | `quest/platform-04-mmap-linux` | 分支 `quest/platform-03-libtorch-linux` 的末端，再合入主线 tag `chapter-4.1-safetensors-parser` |
 | platform-05 | `quest/platform-05-ggml-linux` | 分支 `quest/platform-04-mmap-linux` 的末端，再合入主线 tag `chapter-8.1-ggml-build-cuda` |

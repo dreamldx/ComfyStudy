@@ -3,7 +3,7 @@
 - 类型：支线（2.1、2.2 已写，2.3、2.4 是草案，到该阶段前再细化）
 - 状态：进行中（2.1、2.2 已验证，2.3、2.4 未开始）
 - 分支：`quest/platform-02-event-loop-network`（支线不打 tag、不发 Release）
-- 起点：分支 `quest/platform-01-linux-foundation` 的末端，再合入主线 tag `chapter-1.1-http-json`（platform-01 还没有代码，所以现在分支直接从主线 tag 开始）
+- 起点：分支 `quest/platform-01-linux-foundation` 的末端，再合入主线 tag `chapter-1.1-http-json`（platform-01 目前只写了 1.1，platform-02 的 Windows 部分不依赖它，所以现在分支直接从主线 tag 开始；写 platform-2.3、2.4 时再基于 platform-01 的末端）
 - 类别：功能支线（依附：主线阶段 1）
 - 完成标准：Boost.Asio 的事件循环和 libcurl 三种用法的对比，在 Windows 上做完并验证（2.1、2.2），在 Linux 上做同样的事并记录差异（2.3、2.4）
 
