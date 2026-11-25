@@ -2,7 +2,7 @@
 
 - 状态：已验证 ｜ 类型：支线 ｜ 分支：`quest/platform-01-linux-foundation`（支线不打 tag，用 `git log quest/platform-01-linux-foundation --grep="^chapter-platform-1.3"` 定位本章提交）
 - 所属支线：[支线 platform-01：Linux 阶段 0](README.md)
-- 可开始于：主线 [0.5 DLL 集中管理与依赖检查](../../tutorial/phase-00-toolchain/0.5-dll-management.md)
+- 可开始于：主线 [0.6 检测 GPU 与 CUDA 驱动](../../tutorial/phase-00-toolchain/0.6-gpu-check.md)
 - 一句话目标：在主线已拆分的基础上新增 `cmake/platform/linux.cmake` 和 `linux-debug`、`linux-release`、`linux-asan` 三个预设，接入 platform-1.2 的 vcpkg 和固定的 `g++-16`；补上能编过的最小 Linux 分支（`config::Get` 读环境变量，`config::ExeDirectory` 读 `/proc/self/exe`，测试里的环境变量改成可移植的写法），做一次完整构建，42 个测试通过，程序输出已加载的配置项名称
 
 ## 1. 本章目标与成果

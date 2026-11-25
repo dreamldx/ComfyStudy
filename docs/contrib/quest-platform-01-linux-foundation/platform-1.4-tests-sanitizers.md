@@ -2,7 +2,7 @@
 
 - 状态：已验证 ｜ 类型：支线 ｜ 分支：`quest/platform-01-linux-foundation`（支线不打 tag，用 `git log quest/platform-01-linux-foundation --grep="^chapter-platform-1.4"` 定位本章提交）
 - 所属支线：[支线 platform-01：Linux 阶段 0](README.md)
-- 可开始于：主线 [0.5 DLL 集中管理与依赖检查](../../tutorial/phase-00-toolchain/0.5-dll-management.md)
+- 可开始于：主线 [0.6 检测 GPU 与 CUDA 驱动](../../tutorial/phase-00-toolchain/0.6-gpu-check.md)
 - 一句话目标：证明 `linux-asan` 下的测试通过是有意义的：写一个“金丝雀”程序，故意触发 11 种错误（堆越界、释放后使用、栈越界、返回后使用栈变量、全局越界、重复释放、泄漏、整数溢出、移位过大、除以零、空指针），每种错误一个测试，只有 sanitizer 报告了才通过；在 `linux-asan` 测试预设里设 `UBSAN_OPTIONS` 和 `ASAN_OPTIONS`；讲清怎么读 ASan、UBSan 和 LeakSanitizer 的报告
 
 ## 1. 本章目标与成果
@@ -468,4 +468,4 @@ ctest --test-dir build/linux-ubsan -L canary
 
 ## 11. 下一章预告
 
-下一章 platform-1.5 装 GPU 相关的环境：CUDA 13.x 和 cuDNN，选定驱动，验证 `nvcc` 与宿主编译器（platform-1.1 固定下来的 `g++-16`）的配套，并检查 `nvidia-smi`。vcpkg 里的 `cuda`、`cudnn` 端口版本很旧、只能检测、装不了 13.x，所以这一步仍然用 NVIDIA 官方的安装方式。
+下一章 platform-1.5 检查 GPU：复用主线 0.6 的探针，给 `check-env.sh` 加 `--gpu`，确认这台机器上的程序能用上显卡。只检查驱动这一层，不装 CUDA 工具包和 cuDNN。探针要在 `linux-asan` 下运行，所以会遇到 AddressSanitizer 和 CUDA 驱动的冲突。

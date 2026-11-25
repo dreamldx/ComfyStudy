@@ -30,7 +30,7 @@
 | llm-03 | `quest/llm-03-llm-image-craft` | 主线 tag `chapter-10.4-skills-discord-demo` |
 | llm-04 | `quest/llm-04-skills-advanced` | 分支 `quest/llm-01-llm-app-engineering` 的末端，再合入主线 tag `chapter-2.6-workflow-recording`（4.8 用 llm-1.5 的录制回放；4.4 还需要 llm-05 的沙箱，见下面的“交错推进”） |
 | llm-05 | `quest/llm-05-sandbox` | 分支 `quest/llm-01-llm-app-engineering` 的末端（本阶段所需的最晚主线节点是 `chapter-1.4-tool-runtime`，已包含在该分支的历史中；5.7 用 llm-1.5 的录制回放） |
-| platform-01 | `quest/platform-01-linux-foundation` | 主线 tag `chapter-0.5-dll-management`（主线的 CMake 已按系统拆成平台文件，见 0.1） |
+| platform-01 | `quest/platform-01-linux-foundation` | 主线 tag `chapter-0.6-gpu-check`（主线的 CMake 已按系统拆成平台文件，见 0.1） |
 | platform-02 | `quest/platform-02-event-loop-network` | 分支 `quest/platform-01-linux-foundation` 的末端，再合入主线 tag `chapter-1.1-http-json`（platform-01 目前只写了 1.1、platform-02 的 Windows 部分不依赖它，现在分支直接从这个 tag 开始；2.1、2.2 是 Windows 版，2.3、2.4 是 Linux 版） |
 | platform-03 | `quest/platform-03-libtorch-linux` | 分支 `quest/platform-02-event-loop-network` 的末端，再合入主线 tag `chapter-3.1-libtorch-setup` |
 | platform-04 | `quest/platform-04-mmap-linux` | 分支 `quest/platform-03-libtorch-linux` 的末端，再合入主线 tag `chapter-4.1-safetensors-parser` |
@@ -205,12 +205,12 @@
 | [llm-5.6 调用预算与失败回报](../quest-llm-05-sandbox/llm-5.6-call-budget.md) | 沙箱与脚本编排 | [1.4 工具运行时：注册、校验与执行](../../tutorial/phase-01-llm-chat/1.4-tool-runtime.md) | 依赖 llm-5.5 |
 | [llm-5.7 沙箱逃逸测试](../quest-llm-05-sandbox/llm-5.7-escape-tests.md) | 沙箱与脚本编排 | [1.3 Tool Calling 循环](../../tutorial/phase-01-llm-chat/1.3-tool-calling.md) | 依赖 llm-5.2 至 llm-5.5；用 llm-1.5 的录制回放 |
 | [llm-5.8 sandbox Skill](../quest-llm-05-sandbox/llm-5.8-sandbox-skill.md) | 沙箱与脚本编排 | [1.5 Skill 机制：按需加载的能力](../../tutorial/phase-01-llm-chat/1.5-skills.md) | 依赖 llm-5.5、llm-4.1（Skill 文件格式）、llm-4.5（权限声明） |
-| [platform-1.1 Linux 工具链与环境检查](../quest-platform-01-linux-foundation/platform-1.1-toolchain-check.md) | Linux 阶段 0 | [0.5 DLL 集中管理与依赖检查](../../tutorial/phase-00-toolchain/0.5-dll-management.md) |  |
-| [platform-1.2 用 vcpkg 管理依赖](../quest-platform-01-linux-foundation/platform-1.2-vcpkg-deps.md) | Linux 阶段 0 | [0.5 DLL 集中管理与依赖检查](../../tutorial/phase-00-toolchain/0.5-dll-management.md) |  |
-| [platform-1.3 Linux 的 CMake 平台文件与最小移植](../quest-platform-01-linux-foundation/platform-1.3-cmake-linux.md) | Linux 阶段 0 | [0.5 DLL 集中管理与依赖检查](../../tutorial/phase-00-toolchain/0.5-dll-management.md) | 在主线已拆分的平台文件的基础上加 linux.cmake（见 0.1） |
-| [platform-1.4 测试与 Sanitizer](../quest-platform-01-linux-foundation/platform-1.4-tests-sanitizers.md) | Linux 阶段 0 | [0.5 DLL 集中管理与依赖检查](../../tutorial/phase-00-toolchain/0.5-dll-management.md) |  |
-| [platform-1.5 GPU 与 CUDA 环境](../quest-platform-01-linux-foundation/platform-1.5-cuda-env.md) | Linux 阶段 0 | [0.5 DLL 集中管理与依赖检查](../../tutorial/phase-00-toolchain/0.5-dll-management.md) |  |
-| [platform-1.6 CI 与本地验证](../quest-platform-01-linux-foundation/platform-1.6-ci-verify.md) | Linux 阶段 0 | [0.5 DLL 集中管理与依赖检查](../../tutorial/phase-00-toolchain/0.5-dll-management.md) |  |
+| [platform-1.1 Linux 工具链与环境检查](../quest-platform-01-linux-foundation/platform-1.1-toolchain-check.md) | Linux 阶段 0 | [0.6 检测 GPU 与 CUDA 驱动](../../tutorial/phase-00-toolchain/0.6-gpu-check.md) |  |
+| [platform-1.2 用 vcpkg 管理依赖](../quest-platform-01-linux-foundation/platform-1.2-vcpkg-deps.md) | Linux 阶段 0 | [0.6 检测 GPU 与 CUDA 驱动](../../tutorial/phase-00-toolchain/0.6-gpu-check.md) |  |
+| [platform-1.3 Linux 的 CMake 平台文件与最小移植](../quest-platform-01-linux-foundation/platform-1.3-cmake-linux.md) | Linux 阶段 0 | [0.6 检测 GPU 与 CUDA 驱动](../../tutorial/phase-00-toolchain/0.6-gpu-check.md) | 在主线已拆分的平台文件的基础上加 linux.cmake（见 0.1） |
+| [platform-1.4 测试与 Sanitizer](../quest-platform-01-linux-foundation/platform-1.4-tests-sanitizers.md) | Linux 阶段 0 | [0.6 检测 GPU 与 CUDA 驱动](../../tutorial/phase-00-toolchain/0.6-gpu-check.md) |  |
+| [platform-1.5 GPU 与 CUDA 环境](../quest-platform-01-linux-foundation/platform-1.5-cuda-env.md) | Linux 阶段 0 | [0.6 检测 GPU 与 CUDA 驱动](../../tutorial/phase-00-toolchain/0.6-gpu-check.md) |  |
+| [platform-1.6 CI 与本地验证](../quest-platform-01-linux-foundation/platform-1.6-ci-verify.md) | Linux 阶段 0 | [0.6 检测 GPU 与 CUDA 驱动](../../tutorial/phase-00-toolchain/0.6-gpu-check.md) |  |
 | [platform-2.1 事件循环：Boost.Asio 的定时器与协程（Windows）](../quest-platform-02-event-loop-network/platform-2.1-asio-basics.md) | 事件循环和网络（Windows） | [1.1 HTTP 与 JSON](../../tutorial/phase-01-llm-chat/1.1-http-json.md) |  |
 | [platform-2.2 libcurl 三种用法：在事件循环里的实现与对比（Windows）](../quest-platform-02-event-loop-network/platform-2.2-curl-modes.md) | 事件循环和网络（Windows） | [1.1 HTTP 与 JSON](../../tutorial/phase-01-llm-chat/1.1-http-json.md) |  |
 | [platform-2.3 事件循环（Linux）](../quest-platform-02-event-loop-network/platform-2.3-asio-linux.md) | 事件循环和网络（Linux） | [1.1 HTTP 与 JSON](../../tutorial/phase-01-llm-chat/1.1-http-json.md) |  |

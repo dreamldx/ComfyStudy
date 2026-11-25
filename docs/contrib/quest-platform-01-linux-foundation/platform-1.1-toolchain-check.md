@@ -2,7 +2,7 @@
 
 - 状态：已验证 ｜ 类型：支线 ｜ 分支：`quest/platform-01-linux-foundation`（支线不打 tag，用 `git log quest/platform-01-linux-foundation --grep="^chapter-platform-1.1"` 定位本章提交）
 - 所属支线：[支线 platform-01：Linux 阶段 0](README.md)
-- 可开始于：主线 [0.5 DLL 集中管理与依赖检查](../../tutorial/phase-00-toolchain/0.5-dll-management.md)
+- 可开始于：主线 [0.6 检测 GPU 与 CUDA 驱动](../../tutorial/phase-00-toolchain/0.6-gpu-check.md)
 - 一句话目标：装好固定主版本的 GCC、CMake ≥ 3.25、Ninja、pkg-config、git，写 `scripts/check-env.sh`（含试编译）和它的测试
 
 ## 1. 本章目标与成果
@@ -72,13 +72,13 @@ check-env: OK
 
 - **同一台机器上有好几个 GCC。** Debian 的 `g++-11` 到 `g++-16` 是各自独立的包，可以同时装。装机当天这台机器上，`g++` 是 16，`gcc-14`、`gcc-15`、`gcc-16` 也都在。
 - **`g++` 是一个别名。** 它指向哪个版本由系统的默认设置决定。sid 把默认值升到新版本时，你什么都没改，项目就换了编译器。
-- **nvcc 只接受它认可的宿主编译器。** nvcc 按宿主编译器的主版本做检查，超出范围就拒绝。NVIDIA 的资料显示 CUDA 13.0 起支持 GCC 15（[CUDA 13.0 的介绍](https://developer.nvidia.com/blog/whats-new-and-important-in-cuda-toolkit-13-0/)），13.4 起支持 GCC 16（[CUDA 特性归档](https://docs.nvidia.com/cuda/cuda-features-archive/index.html)）。官方安装指南里的宿主编译器表我没有直接查到上限，这一点留到 platform-1.5 装 CUDA 时核对。
+- **nvcc 只接受它认可的宿主编译器。** nvcc 按宿主编译器的主版本做检查，超出范围就拒绝。NVIDIA 的资料显示 CUDA 13.0 起支持 GCC 15（[CUDA 13.0 的介绍](https://developer.nvidia.com/blog/whats-new-and-important-in-cuda-toolkit-13-0/)），13.4 起支持 GCC 16（[CUDA 特性归档](https://docs.nvidia.com/cuda/cuda-features-archive/index.html)）。后来查了 CUDA 13.5 安装指南里的宿主编译器表：x86_64 上的 GCC 是 “6.x - 16.x”，16 在范围内。这一条来自文档，没有在这台机器上验证，因为 [platform-1.5](platform-1.5-cuda-env.md) 没有装 CUDA 工具包；第一个用到 `nvcc` 的章节装好后再核对。
 
 所以本线的做法是：脚本顶部写死主版本 `GCC_MAJOR=16`，只认 `g++-16` 和 `gcc-16`，从不看 `g++`。后面的 CMake 预设也会写 `g++-16`。将来要换版本，改这一个数字和包名，别处不动。
 
 不用 `update-alternatives` 把 `g++` 指过去：那会改整个系统的默认，影响机器上别的项目，而且脚本通过靠的是改系统，不是编译器本身。
 
-选 16 的理由很直接：它是 sid 里最高的版本，也是这台机器已经装好的默认编译器，同时在 CUDA 13.4 之后的支持范围内。如果 platform-1.5 装的 CUDA 低于 13.4，就改成 15，多装一个 `g++-15`。GCC 16 很新，第三方库有可能出警告，这会在 platform-1.3 的 `-Werror` 和 platform-1.2 的 vcpkg 构建里暴露，到时退一档即可，只改这一处。
+选 16 的理由很直接：它是 sid 里最高的版本，也是这台机器已经装好的默认编译器，同时在 CUDA 13.4 之后的支持范围内。如果以后装的 CUDA 低于 13.4，就改成 15，多装一个 `g++-15`。GCC 16 很新，第三方库有可能出警告，这会在 platform-1.3 的 `-Werror` 和 platform-1.2 的 vcpkg 构建里暴露，到时退一档即可，只改这一处。
 
 ### 2.2 滚动发行与“装机当天”
 
@@ -346,7 +346,7 @@ check-env tests: 11 passed, 0 failed
 - 没有做的：
   - 没有在干净的容器里验证安装清单。清单是否完整，只靠这台机器上“装完 `cmake` 和 `ninja-build` 之后全部通过”来判断，而这台机器本来就装了编译器和 git。容器验证留给 platform-1.6。
   - 没有验证 AddressSanitizer 附带的泄漏检测（LeakSanitizer）在容器里的行为，见第 8 节。
-  - 没有验证 CUDA 对 GCC 16 的支持上限，留给 platform-1.5。
+  - CUDA 13.5 的文档写 GCC 16 在支持范围内；没有在这台机器上验证（没有装 CUDA 工具包），见 [platform-1.5](platform-1.5-cuda-env.md)。
 
 ## 7. 技术资料
 

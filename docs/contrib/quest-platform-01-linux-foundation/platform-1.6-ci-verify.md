@@ -2,7 +2,7 @@
 
 - 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/platform-01-linux-foundation`（支线不打 tag，用 `git log quest/platform-01-linux-foundation --grep="^chapter-platform-1.6"` 定位本章提交）
 - 所属支线：[支线 platform-01：Linux 阶段 0](README.md)
-- 可开始于：主线 [0.5 DLL 集中管理与依赖检查](../../tutorial/phase-00-toolchain/0.5-dll-management.md)
+- 可开始于：主线 [0.6 检测 GPU 与 CUDA 驱动](../../tutorial/phase-00-toolchain/0.6-gpu-check.md)
 - 一句话目标：在 `ubuntu-latest` 上用 `debian:sid`（或固定日期快照）容器跑 CPU 测试（无 GPU），并写 `verify.sh`
 
 ## 1. 本章目标与成果

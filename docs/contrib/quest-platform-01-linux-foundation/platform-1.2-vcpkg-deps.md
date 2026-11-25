@@ -2,7 +2,7 @@
 
 - 状态：已验证 ｜ 类型：支线 ｜ 分支：`quest/platform-01-linux-foundation`（支线不打 tag，用 `git log quest/platform-01-linux-foundation --grep="^chapter-platform-1.2"` 定位本章提交）
 - 所属支线：[支线 platform-01：Linux 阶段 0](README.md)
-- 可开始于：主线 [0.5 DLL 集中管理与依赖检查](../../tutorial/phase-00-toolchain/0.5-dll-management.md)
+- 可开始于：主线 [0.6 检测 GPU 与 CUDA 驱动](../../tutorial/phase-00-toolchain/0.6-gpu-check.md)
 - 一句话目标：在 Linux 上装 vcpkg（检出到清单里的基线提交），让它用固定的 `g++-16` 构建 `vcpkg.json` 里的库（自定义三元组 `x64-linux-gcc` 加链式工具链文件），把 `check-env.sh` 扩展到 vcpkg 和它要用的工具（curl、zip、unzip、tar、make、perl），并把 Linux 和 Windows 上解析出的版本逐个对比
 
 ## 1. 本章目标与成果
