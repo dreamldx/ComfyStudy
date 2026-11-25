@@ -17,12 +17,25 @@ theme:
 
 extra_css:
   - stylesheets/extra.css
+  - https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css  # formulas (mdx_math)
+
+# Libraries for the formulas (KaTeX) and the charts (Vega-Lite). They are loaded on every page; see
+# the spec ("Documentation plugins") for how to write a formula or a chart.
+extra_javascript:
+  - https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js
+  - path: https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/mathtex-script-type.min.js
+    defer: true
+  - https://cdn.jsdelivr.net/npm/vega@5.30.0
+  - https://cdn.jsdelivr.net/npm/vega-lite@5.21.0
+  - https://cdn.jsdelivr.net/npm/vega-embed@6.26.0
 
 plugins:
   - search:
       lang:
         - zh
         - en
+  - charts      # mkdocs-charts-plugin: a ```vegalite block becomes a chart
+  - glightbox   # mkdocs-glightbox: click an image to see it large
 
 markdown_extensions:
   - admonition
@@ -30,7 +43,12 @@ markdown_extensions:
   - toc:
       permalink: true
   - pymdownx.highlight
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: vegalite
+          class: vegalite
+          format: !!python/name:mkdocs_charts_plugin.fences.fence_vegalite
+  - mdx_math    # python-markdown-math: \( inline \) and $$ display $$ formulas, rendered by KaTeX
   - pymdownx.details
 
 # The navigation is generated from the phase READMEs by scripts/make-site-nav.py
