@@ -34,7 +34,7 @@
 
 | 编号 | 主题 | 类型 | 章节数 | 完成标准 |
 |---|---|---|---|---|
-| llm-01 | [LLM 应用工程](quest-llm-01-llm-app-engineering/README.md) | 支线·草案 | 11 | 搭好 Boost.Asio 事件循环；测出 libcurl 三种用法在事件循环里的差别并选定机器人里用哪一种；在 Discord 里机器人边想边发（流式更新同一条消息），输出可校验的结构化 JSON，长对话自动压缩，并给出每个频道的用量与费用；用录好的响应就能确定地回放测试；聊天历史的表结构有版本和升级脚本，一轮对话的消息在一个事务里写入，历史里不存令牌和密钥 |
+| llm-01 | [LLM 应用工程](quest-llm-01-llm-app-engineering/README.md) | 支线·草案 | 6 | 在 Discord 里机器人边想边发（流式更新同一条消息），输出可校验的结构化 JSON，长对话自动压缩，并给出每个频道的用量与费用；用录好的响应就能确定地回放测试；聊天历史的表结构有版本和升级脚本，一轮对话的消息在一个事务里写入，历史里不存令牌和密钥 |
 | llm-02 | [Agent 进阶](quest-llm-02-agent-advanced/README.md) | 支线·草案 | 11 | 机器人能记住用户的偏好、按语义检索自己以前生成的图、并行调用工具、把外部 MCP 服务当作 Skill 使用，并在节点图出错时根据校验信息自行修正；并能搜索、并只读查询自己的聊天历史 |
 | llm-03 | [用 LLM 改进出图](quest-llm-03-llm-image-craft/README.md) | 支线·草案 | 7 | 用户只说一句模糊的话，机器人自动扩写提示词、出图、让视觉模型评审并重画，最后发回最好的一张并解释为什么选它 |
 | llm-04 | [Skills 进阶](quest-llm-04-skills-advanced/README.md) | 支线·草案 | 9 | Skill 用统一的文件格式描述，模型只在需要时才读到它的正文和资源；有一套评测集能量化“该用哪个 Skill”选得准不准；录好的操作可以自动生成 Skill，并带着权限声明打包、热重载 |
@@ -42,24 +42,25 @@
 
 ### platform 方向（Linux 版）
 
-Linux 实现只存在于这些分支里，不进入主线的 `src/`，也不进入 Release。编号按“依附的主线阶段”排序，依附支线的排在最后。**功能**支线是 Linux 版的适配，01、02、03、04、07 串成一条线；**分析**支线做性能与优化对比，是叶子，不作为任何支线的起点。只给有 Linux 差异的阶段和支线建 platform 支线，没有已知差异的不建空支线，以后发现再按顺序追加。
+Linux 实现只存在于这些分支里（platform-02 的前两章是 Windows 版，后两章是对应的 Linux 版），不进入主线的 `src/`，也不进入 Release。编号按“依附的主线阶段”排序，依附支线的排在最后。**功能**支线是 Linux 版的适配，01、02、03、04、07 串成一条线；**分析**支线做性能与优化对比，是叶子，不作为任何支线的起点。只给有 Linux 差异的阶段和支线建 platform 支线，没有已知差异的不建空支线，以后发现再按顺序追加。
 
 | 编号 | 主题 | 类型 | 类别 | 章节数 | 完成标准 |
 |---|---|---|---|---|---|
 | platform-01 | [Linux 阶段 0](quest-platform-01-linux-foundation/README.md) | 支线 | 功能 | 7 | 程序在 Linux 上运行时输出已加载的配置项名称；全部测试在 ASan 与 UBSan 下通过 |
-| platform-02 | [libtorch（Linux）](quest-platform-02-libtorch-linux/README.md) | 支线·草案 | 功能 | 2 | 在 Linux 上用官方预编译包跑通 libtorch 的 hello tensor |
-| platform-03 | [内存映射（Linux）](quest-platform-03-mmap-linux/README.md) | 支线·草案 | 功能 | 1 | safetensors 的内存映射读取在 Linux 上通过测试，大文件与对齐都已验证 |
-| platform-04 | [ggml（Linux）](quest-platform-04-ggml-linux/README.md) | 支线·草案 | 功能 | 2 | 在 Linux 上编译出带 CUDA 后端的 ggml，并与 libtorch 共存 |
-| platform-05 | [性能对比·UNet（Linux 与 Windows）](quest-platform-05-perf-unet/README.md) | 支线·草案 | 分析 | 4 | 给出 UNet 单步前向在 Linux 与 Windows 上的耗时与显存对比，并解释差异 |
-| platform-06 | [性能对比·SD 1.5 出图](quest-platform-06-perf-sd15/README.md) | 支线·草案 | 分析 | 4 | 给出 SD 1.5 端到端出图在 Linux 与 Windows 上的耗时拆分与结果一致性 |
-| platform-07 | [ONNX Runtime（Linux）](quest-platform-07-onnxruntime-linux/README.md) | 支线·草案 | 功能 | 1 | 在 Linux 上让 ORT 的 CUDA 执行器与 libtorch 共用 CUDA / cuDNN 运行库 |
-| platform-08 | [性能对比·FLUX](quest-platform-08-perf-flux/README.md) | 支线·草案 | 分析 | 3 | 给出量化版 FLUX 出图在 Linux 与 Windows 上的耗时与显存对比 |
-| platform-09 | [性能对比·Qwen-Image](quest-platform-09-perf-qwen-image/README.md) | 支线·草案 | 分析 | 2 | 给出 Qwen-Image 分段加载与逐块卸载在 Linux 与 Windows 上的耗时与显存对比 |
-| platform-10 | [源码构建与官方版本对比（Linux）](quest-platform-10-source-build/README.md) | 支线·草案 | 分析 | 5 | 说清哪些库值得在 Linux 上源码构建、收益多大、代价是什么 |
-| platform-11 | [GCC 与 Clang 的编译器性能优化](quest-platform-11-gcc-clang/README.md) | 支线·草案 | 分析 | 5 | 整理 GCC 与 Clang 的优化选项，给出 Linux 线推荐的优化选项 |
-| platform-12 | [Agent 进阶（Linux 完整版）](quest-platform-12-agent-advanced-linux/README.md) | 支线·草案 | 功能 | 11 | Linux 上 llm-02 的全部章节构建通过，并记录与 Windows 的差异 |
-| platform-13 | [沙箱与脚本编排（Linux 完整版）](quest-platform-13-sandbox-linux/README.md) | 支线·草案 | 功能 | 8 | Linux 上 llm-05 的全部章节构建通过，子进程沙箱改用 Linux 的机制并通过逃逸测试 |
-| platform-14 | [Skills 进阶（Linux 完整版）](quest-platform-14-skills-advanced-linux/README.md) | 支线·草案 | 功能 | 9 | Linux 上 llm-04 的全部章节构建通过，并记录与 Windows 的差异 |
+| platform-02 | [事件循环和网络（Windows 与 Linux）](quest-platform-02-event-loop-network/README.md) | 支线·草案 | 功能 | 4 | Boost.Asio 的事件循环和 libcurl 三种用法的对比，在 Windows 上做完并验证（2.1、2.2），在 Linux 上做同样的事并记录差异（2.3、2.4） |
+| platform-03 | [libtorch（Linux）](quest-platform-03-libtorch-linux/README.md) | 支线·草案 | 功能 | 2 | 在 Linux 上用官方预编译包跑通 libtorch 的 hello tensor |
+| platform-04 | [内存映射（Linux）](quest-platform-04-mmap-linux/README.md) | 支线·草案 | 功能 | 1 | safetensors 的内存映射读取在 Linux 上通过测试，大文件与对齐都已验证 |
+| platform-05 | [ggml（Linux）](quest-platform-05-ggml-linux/README.md) | 支线·草案 | 功能 | 2 | 在 Linux 上编译出带 CUDA 后端的 ggml，并与 libtorch 共存 |
+| platform-06 | [性能对比·UNet（Linux 与 Windows）](quest-platform-06-perf-unet/README.md) | 支线·草案 | 分析 | 4 | 给出 UNet 单步前向在 Linux 与 Windows 上的耗时与显存对比，并解释差异 |
+| platform-07 | [性能对比·SD 1.5 出图](quest-platform-07-perf-sd15/README.md) | 支线·草案 | 分析 | 4 | 给出 SD 1.5 端到端出图在 Linux 与 Windows 上的耗时拆分与结果一致性 |
+| platform-08 | [ONNX Runtime（Linux）](quest-platform-08-onnxruntime-linux/README.md) | 支线·草案 | 功能 | 1 | 在 Linux 上让 ORT 的 CUDA 执行器与 libtorch 共用 CUDA / cuDNN 运行库 |
+| platform-09 | [性能对比·FLUX](quest-platform-09-perf-flux/README.md) | 支线·草案 | 分析 | 3 | 给出量化版 FLUX 出图在 Linux 与 Windows 上的耗时与显存对比 |
+| platform-10 | [性能对比·Qwen-Image](quest-platform-10-perf-qwen-image/README.md) | 支线·草案 | 分析 | 2 | 给出 Qwen-Image 分段加载与逐块卸载在 Linux 与 Windows 上的耗时与显存对比 |
+| platform-11 | [源码构建与官方版本对比（Linux）](quest-platform-11-source-build/README.md) | 支线·草案 | 分析 | 5 | 说清哪些库值得在 Linux 上源码构建、收益多大、代价是什么 |
+| platform-12 | [GCC 与 Clang 的编译器性能优化](quest-platform-12-gcc-clang/README.md) | 支线·草案 | 分析 | 5 | 整理 GCC 与 Clang 的优化选项，给出 Linux 线推荐的优化选项 |
+| platform-13 | [Agent 进阶（Linux 完整版）](quest-platform-13-agent-advanced-linux/README.md) | 支线·草案 | 功能 | 11 | Linux 上 llm-02 的全部章节构建通过，并记录与 Windows 的差异 |
+| platform-14 | [沙箱与脚本编排（Linux 完整版）](quest-platform-14-sandbox-linux/README.md) | 支线·草案 | 功能 | 8 | Linux 上 llm-05 的全部章节构建通过，子进程沙箱改用 Linux 的机制并通过逃逸测试 |
+| platform-15 | [Skills 进阶（Linux 完整版）](quest-platform-15-skills-advanced-linux/README.md) | 支线·草案 | 功能 | 9 | Linux 上 llm-04 的全部章节构建通过，并记录与 Windows 的差异 |
 
 ### paper 方向（论文解析）
 

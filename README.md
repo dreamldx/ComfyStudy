@@ -41,7 +41,7 @@
 | 15 | [FLUX.1 [schnell]](docs/tutorial/phase-15-flux/README.md) | Discord 里用量化版 FLUX.1 [schnell] 出图 |
 | 16 | [Qwen-Image](docs/tutorial/phase-16-qwen-image/README.md) | 用量化版 Qwen-Image 出图，编码器与主模型分段加载 |
 
-### 支线（扩散模型 17 个、LLM 5 个、platform 14 个、paper 14 个）
+### 支线（扩散模型 17 个、LLM 5 个、platform 15 个、paper 14 个）
 
 支线分成**扩散模型**、**LLM** 和 **platform（Linux 版）**、**paper（论文解析）** 四个方向，各自从 01 编号，可整段跳过。扩散模型方向按“实现难易与有趣程度”从易到难排序；LLM 方向的阶段相互独立。每个支线阶段是一个独立分支（`quest/diffusion-NN-<名字>` 或 `quest/llm-NN-<名字>`），不打 tag、不发 Release，也不合并回 `main`。
 
@@ -82,19 +82,20 @@
 | 编号 | 主题 | 分支 |
 |---|---|---|
 | platform-01 | [Linux 阶段 0](docs/contrib/quest-platform-01-linux-foundation/README.md) | `quest/platform-01-linux-foundation` |
-| platform-02 | [libtorch（Linux）](docs/contrib/quest-platform-02-libtorch-linux/README.md) | `quest/platform-02-libtorch-linux` |
-| platform-03 | [内存映射（Linux）](docs/contrib/quest-platform-03-mmap-linux/README.md) | `quest/platform-03-mmap-linux` |
-| platform-04 | [ggml（Linux）](docs/contrib/quest-platform-04-ggml-linux/README.md) | `quest/platform-04-ggml-linux` |
-| platform-05 | [性能对比·UNet（Linux 与 Windows）](docs/contrib/quest-platform-05-perf-unet/README.md) | `quest/platform-05-perf-unet` |
-| platform-06 | [性能对比·SD 1.5 出图](docs/contrib/quest-platform-06-perf-sd15/README.md) | `quest/platform-06-perf-sd15` |
-| platform-07 | [ONNX Runtime（Linux）](docs/contrib/quest-platform-07-onnxruntime-linux/README.md) | `quest/platform-07-onnxruntime-linux` |
-| platform-08 | [性能对比·FLUX](docs/contrib/quest-platform-08-perf-flux/README.md) | `quest/platform-08-perf-flux` |
-| platform-09 | [性能对比·Qwen-Image](docs/contrib/quest-platform-09-perf-qwen-image/README.md) | `quest/platform-09-perf-qwen-image` |
-| platform-10 | [源码构建与官方版本对比（Linux）](docs/contrib/quest-platform-10-source-build/README.md) | `quest/platform-10-source-build` |
-| platform-11 | [GCC 与 Clang 的编译器性能优化](docs/contrib/quest-platform-11-gcc-clang/README.md) | `quest/platform-11-gcc-clang` |
-| platform-12 | [Agent 进阶（Linux 完整版）](docs/contrib/quest-platform-12-agent-advanced-linux/README.md) | `quest/platform-12-agent-advanced-linux` |
-| platform-13 | [沙箱与脚本编排（Linux 完整版）](docs/contrib/quest-platform-13-sandbox-linux/README.md) | `quest/platform-13-sandbox-linux` |
-| platform-14 | [Skills 进阶（Linux 完整版）](docs/contrib/quest-platform-14-skills-advanced-linux/README.md) | `quest/platform-14-skills-advanced-linux` |
+| platform-02 | [事件循环和网络](docs/contrib/quest-platform-02-event-loop-network/README.md) | `quest/platform-02-event-loop-network` |
+| platform-03 | [libtorch（Linux）](docs/contrib/quest-platform-03-libtorch-linux/README.md) | `quest/platform-03-libtorch-linux` |
+| platform-04 | [内存映射（Linux）](docs/contrib/quest-platform-04-mmap-linux/README.md) | `quest/platform-04-mmap-linux` |
+| platform-05 | [ggml（Linux）](docs/contrib/quest-platform-05-ggml-linux/README.md) | `quest/platform-05-ggml-linux` |
+| platform-06 | [性能对比·UNet（Linux 与 Windows）](docs/contrib/quest-platform-06-perf-unet/README.md) | `quest/platform-06-perf-unet` |
+| platform-07 | [性能对比·SD 1.5 出图](docs/contrib/quest-platform-07-perf-sd15/README.md) | `quest/platform-07-perf-sd15` |
+| platform-08 | [ONNX Runtime（Linux）](docs/contrib/quest-platform-08-onnxruntime-linux/README.md) | `quest/platform-08-onnxruntime-linux` |
+| platform-09 | [性能对比·FLUX](docs/contrib/quest-platform-09-perf-flux/README.md) | `quest/platform-09-perf-flux` |
+| platform-10 | [性能对比·Qwen-Image](docs/contrib/quest-platform-10-perf-qwen-image/README.md) | `quest/platform-10-perf-qwen-image` |
+| platform-11 | [源码构建与官方版本对比（Linux）](docs/contrib/quest-platform-11-source-build/README.md) | `quest/platform-11-source-build` |
+| platform-12 | [GCC 与 Clang 的编译器性能优化](docs/contrib/quest-platform-12-gcc-clang/README.md) | `quest/platform-12-gcc-clang` |
+| platform-13 | [Agent 进阶（Linux 完整版）](docs/contrib/quest-platform-13-agent-advanced-linux/README.md) | `quest/platform-13-agent-advanced-linux` |
+| platform-14 | [沙箱与脚本编排（Linux 完整版）](docs/contrib/quest-platform-14-sandbox-linux/README.md) | `quest/platform-14-sandbox-linux` |
+| platform-15 | [Skills 进阶（Linux 完整版）](docs/contrib/quest-platform-15-skills-advanced-linux/README.md) | `quest/platform-15-skills-advanced-linux` |
 
 #### paper 方向（论文解析）
 
