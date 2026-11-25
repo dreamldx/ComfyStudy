@@ -65,6 +65,8 @@ TEST(ConfigKnownKeys, TheKeysInOrderWithTheRightOnesSecret) {
       {"discord_token", "DISCORD_TOKEN", "", true},
       {"llm_provider", "LLM_PROVIDER", "openai", false},
       {"llm_reasoning", "LLM_REASONING", "off", false},
+      {"agent_max_steps", "AGENT_MAX_STEPS", "10", false},
+      {"agent_turn_timeout_ms", "AGENT_TURN_TIMEOUT_MS", "300000", false},
       {"openai_api", "OPENAI_API", "chat", false},
       {"openai_model", "OPENAI_MODEL", "", false},
       {"openai_api_key", "OPENAI_API_KEY", "", true},

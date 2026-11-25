@@ -8,7 +8,9 @@
 
 #include <spdlog/spdlog.h>
 
+#include "agent.h"
 #include "chat.h"
+#include "tool.h"
 #include "config.h"
 #include "curl_transport.h"
 #include "greeting.h"
@@ -62,10 +64,13 @@ int main(int argc, char** argv) {
       }
       const std::string start = llm::DefaultProviderName(values);
       llm::MakeProvider(values, start);  // throws and names the missing setting when the chosen one is incomplete
+      const agent::TurnLimits limits = agent::LimitsFromSettings(values);
+      agent::ToolTable tools;  // the two toy tools, offered only with --tools
+      if (parsed.options.tools) agent::AddToyTools(tools);
       llm::UseUtf8Console();
       const auto transport = http::MakeCurlTransport();
-      llm::RunChat(*transport, providers, start, llm::OptionsFromSettings(values), parsed.options.system, std::cin,
-                   std::cout, std::cerr);
+      llm::RunChat(*transport, providers, start, llm::OptionsFromSettings(values), parsed.options.system,
+                   parsed.options.tools ? &tools : nullptr, limits, std::cin, std::cout, std::cerr);
       return 0;
     } catch (const std::exception& e) {
       std::cerr << "error: " << e.what() << '\n';

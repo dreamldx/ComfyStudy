@@ -2,12 +2,11 @@
 
 #include <boost/asio.hpp>
 
+#include <csignal>
 #include <iostream>
-#include <sstream>
+#include <memory>
 
-#include <spdlog/spdlog.h>
-
-#include "llm_client.h"
+#include "console_hook.h"
 
 #if defined(_WIN32)
 #include <windows.h>
@@ -16,12 +15,7 @@
 namespace llm {
 namespace {
 
-std::string Trimmed(const std::string& text) {
-  const char* const spaces = " \t\r\n";
-  const std::size_t first = text.find_first_not_of(spaces);
-  if (first == std::string::npos) return "";
-  return text.substr(first, text.find_last_not_of(spaces) - first + 1);
-}
+using agent::Trimmed;
 
 std::string Names(const std::vector<Provider>& providers) {
   std::string names;
@@ -39,8 +33,8 @@ const Provider* Find(const std::vector<Provider>& providers, const std::string& 
 }  // namespace
 
 void RunChat(http::Transport& transport, const std::vector<Provider>& providers, const std::string& start_name,
-             const Options& options, const std::string& system, std::istream& in, std::ostream& out,
-             std::ostream& err) {
+             const Options& options, const std::string& system, agent::ToolSet* tools, const agent::TurnLimits& limits,
+             std::istream& in, std::ostream& out, std::ostream& err) {
   const Provider* current = Find(providers, start_name);
   if (current == nullptr) {
     throw Error("there is no provider called \"" + start_name + "\"; available: " + Names(providers));
@@ -49,6 +43,7 @@ void RunChat(http::Transport& transport, const std::vector<Provider>& providers,
   Conversation conversation;
   conversation.system = system;
   boost::asio::io_context io;
+  const agent::Hooks hooks = {std::make_shared<agent::ConsoleHook>(out, err, limits)};
 
   std::string line;
   while (out << "> " << std::flush, std::getline(in, line)) {
@@ -87,26 +82,31 @@ void RunChat(http::Transport& transport, const std::vector<Provider>& providers,
       continue;
     }
 
+    // One Turn. The user's message goes in; whatever happens, a Turn that does not end with an answer
+    // is taken out again by RunTurn, so the history only holds questions that were answered.
+    const std::size_t before = conversation.messages.size();
     conversation.messages.push_back({Role::kUser, {TextBlock{line}}});
     try {
+      agent::TurnControl control;
+      boost::asio::signal_set signals(io, SIGINT);  // Ctrl+C stops this Turn, only while it runs
+      signals.async_wait([&control](const boost::system::error_code& error, int /*signal*/) {
+        if (!error) control.Cancel();
+      });
       io.restart();
-      auto answer = boost::asio::co_spawn(io, Generate(transport, *current, conversation, options),
-                                          boost::asio::use_future);
+      auto outcome = boost::asio::co_spawn(
+          io,
+          [&]() -> boost::asio::awaitable<agent::TurnOutcome> {
+            const agent::TurnOutcome result =
+                co_await agent::RunTurn(transport, *current, conversation, options, tools, hooks, limits, nullptr);
+            signals.cancel();  // or the io_context would wait for Ctrl+C for ever
+            co_return result;
+          },
+          boost::asio::bind_cancellation_slot(control.slot(), boost::asio::use_future));
       io.run();
-      const Reply reply = answer.get();  // throws what Generate threw
-      const std::string text = Trimmed(reply.Text());  // some services start the text with blank lines
-      if (text.empty()) {
-        err << "the model returned no text (stopped because: " << reply.stop_reason << ")\n";
-        conversation.messages.pop_back();
-        continue;
-      }
-      out << text << '\n';  // the history below keeps the text as it came
-      spdlog::info("stopped because: {}; tokens in/out: {}/{}", reply.stop_reason, reply.input_tokens.value_or(-1),
-                   reply.output_tokens.value_or(-1));
-      conversation.messages.push_back(reply.message);
+      outcome.get();  // the hooks have said everything there is to say
     } catch (const std::exception& e) {
       err << "error: " << e.what() << '\n';
-      conversation.messages.pop_back();
+      conversation.messages.erase(conversation.messages.begin() + static_cast<std::ptrdiff_t>(before), conversation.messages.end());
     }
   }
 }

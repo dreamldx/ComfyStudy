@@ -2,8 +2,11 @@
 
 #include <gtest/gtest.h>
 
+#include <chrono>
+#include <csignal>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "json.h"
@@ -41,12 +44,13 @@ struct Transcript {
 };
 
 Transcript Chat(std::vector<http::Response> script, const std::vector<llm::Provider>& providers, const std::string& start,
-         const std::string& input, const llm::Options& options = {}, const std::string& system = "") {
+         const std::string& input, const llm::Options& options = {}, const std::string& system = "",
+         agent::ToolSet* tools = nullptr, const agent::TurnLimits& limits = {}) {
   ScriptedTransport transport(std::move(script));
   std::istringstream in(input);
   std::ostringstream out;
   std::ostringstream err;
-  llm::RunChat(transport, providers, start, options, system, in, out, err);
+  llm::RunChat(transport, providers, start, options, system, tools, limits, in, out, err);
   return {out.str(), err.str(), transport.seen()};
 }
 
@@ -94,7 +98,7 @@ TEST(Chat, UseSwitchesTheProviderAndReportsTheReasoningBlocksThatWillNotBeSent) 
   ASSERT_EQ(run.seen.size(), 3u);
   EXPECT_EQ(run.seen[1].url, "https://example.test/responses");
   const Json to_responses = json::Parse(run.seen[1].body);
-  for (const json::Value& item : json::Items(to_responses["input"])) EXPECT_NE(json::StringOr(item, "type"), "thinking");
+  for (const Json& item : json::Items(to_responses["input"])) EXPECT_NE(json::StringOr(item, "type"), "thinking");
   EXPECT_EQ(to_responses["input"].size(), 3u);
 
   // back on the first provider the block is sent again, as it was
@@ -171,4 +175,98 @@ TEST(Chat, InputThatIsNotValidUtf8IsReportedAndNeverSent) {
 TEST(Chat, StartingWithAProviderThatIsNotAvailableIsAnError) {
   EXPECT_THROW(Chat({}, {Anthropic()}, "openai-chat", ""), llm::Error);
   EXPECT_THROW(Chat({}, {}, "anthropic", ""), llm::Error);
+}
+
+// ---- Tools --------------------------------------------------------------------------------------
+
+namespace {
+
+llm::Reply Asks(std::vector<llm::Block> blocks) {
+  llm::Reply reply;
+  reply.message.role = llm::Role::kAssistant;
+  reply.message.blocks = std::move(blocks);
+  reply.stop_reason = "tool_use";
+  return reply;
+}
+
+llm::Block CallAdd(const std::string& id, Json arguments) { return llm::ToolCallBlock{id, "add", std::move(arguments), "", ""}; }
+llm::Block CallSleep(const std::string& id, int ms) { return llm::ToolCallBlock{id, "sleep", Json{{"ms", ms}}, "", ""}; }
+
+}  // namespace
+
+TEST(Chat, ToolCallsArePrintedAndTheAnswerFollows) {
+  agent::ToolTable tools;
+  agent::AddToyTools(tools);
+  const Transcript run = Chat({Ok(Asks({CallAdd("t1", Json{{"a", 2}, {"b", 3}})})), Ok(Answer("The sum is 5."))}, {Anthropic()},
+                              "anthropic", "what is 2 plus 3\n", {}, "", &tools);
+  const std::size_t call = run.out.find("[tool] add {\"a\":2,\"b\":3}\n");
+  const std::size_t result = run.out.find("[tool] add -> 5\n");
+  const std::size_t answer = run.out.find("The sum is 5.\n");
+  ASSERT_NE(call, std::string::npos) << run.out;
+  ASSERT_NE(result, std::string::npos) << run.out;
+  ASSERT_NE(answer, std::string::npos) << run.out;
+  EXPECT_LT(call, result);
+  EXPECT_LT(result, answer);
+  ASSERT_EQ(run.seen.size(), 2u);
+  EXPECT_EQ(json::Parse(run.seen[0].body)["tools"].size(), 2u);  // add and sleep are offered
+}
+
+TEST(Chat, AToolThatFailsIsPrintedAsAnErrorAndTheModelStillAnswers) {
+  agent::ToolTable tools;
+  agent::AddToyTools(tools);
+  const Transcript run = Chat({Ok(Asks({CallAdd("t1", Json{{"a", 1}})})), Ok(Answer("I need both numbers."))}, {Anthropic()}, "anthropic",
+                              "add\n", {}, "", &tools);
+  EXPECT_TRUE(Contains(run.out, "[tool] add -> error: "));
+  EXPECT_TRUE(Contains(run.out, "I need both numbers.\n"));
+}
+
+TEST(Chat, WithoutToolsNothingIsOfferedAndNothingIsPrintedAboutTools) {
+  const Transcript run = Chat({Ok(Answer("Hi"))}, {Anthropic()}, "anthropic", "hello\n");
+  EXPECT_FALSE(json::Parse(run.seen.at(0).body).contains("tools"));
+  EXPECT_FALSE(Contains(run.out, "[tool]"));
+}
+
+TEST(Chat, ATurnThatRunsOutOfTimeIsReportedAndForgotten) {
+  agent::ToolTable tools;
+  agent::AddToyTools(tools);
+  agent::TurnLimits limits;
+  limits.deadline = std::chrono::milliseconds(100);
+  const Transcript run = Chat({Ok(Asks({CallSleep("s1", 5000)})), Ok(Answer("Hi"))}, {Anthropic()}, "anthropic", "sleep\nhello\n", {}, "",
+                              &tools, limits);
+  EXPECT_TRUE(Contains(run.err, "stopped: timed out after 0.1s")) << run.err;
+  ASSERT_EQ(run.seen.size(), 2u);
+  const Json second = json::Parse(run.seen[1].body);
+  ASSERT_EQ(second["messages"].size(), 1u);  // nothing of the first Turn is left
+  EXPECT_EQ(second["messages"][0]["content"][0]["text"], "hello");
+  EXPECT_TRUE(Contains(run.out, "Hi\n"));
+}
+
+TEST(Chat, ATurnThatKeepsCallingToolsStopsAtTheStepLimit) {
+  agent::ToolTable tools;
+  agent::AddToyTools(tools);
+  agent::TurnLimits limits;
+  limits.max_steps = 2;
+  const Transcript run = Chat({Ok(Asks({CallAdd("t1", Json{{"a", 1}, {"b", 1}})})), Ok(Asks({CallAdd("t2", Json{{"a", 1}, {"b", 1}})}))},
+                              {Anthropic()}, "anthropic", "again\n", {}, "", &tools, limits);
+  EXPECT_TRUE(Contains(run.err, "stopped: step limit (2)")) << run.err;
+}
+
+TEST(Chat, CtrlCStopsTheRunningTurnAndTheChatGoesOn) {
+  agent::ToolTable tools;
+  agent::AddToyTools(tools);
+  agent::TurnLimits real_limits;  // the real program has a deadline too (the default is five minutes)
+  real_limits.deadline = std::chrono::minutes(5);
+  std::thread presser([] {
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));  // the Turn is inside the sleep tool by now
+    std::raise(SIGINT);
+  });
+  const auto start = std::chrono::steady_clock::now();
+  const Transcript run = Chat({Ok(Asks({CallSleep("s1", 5000)})), Ok(Answer("Hi"))}, {Anthropic()}, "anthropic", "sleep\nhello\n/exit\n",
+                              {}, "", &tools, real_limits);
+  presser.join();
+  EXPECT_LT(std::chrono::steady_clock::now() - start, std::chrono::seconds(3));
+  EXPECT_TRUE(Contains(run.err, "stopped: cancelled")) << run.err;
+  EXPECT_TRUE(Contains(run.out, "Hi\n"));  // the next line was handled as usual
+  ASSERT_EQ(run.seen.size(), 2u);
+  EXPECT_EQ(json::Parse(run.seen[1].body)["messages"].size(), 1u);
 }

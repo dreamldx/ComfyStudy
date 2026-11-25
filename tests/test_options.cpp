@@ -245,6 +245,11 @@ TEST_F(OptionsTest, ChatFlag) {
   EXPECT_FALSE(Run({}).options.chat);
 }
 
+TEST_F(OptionsTest, ToolsFlag) {
+  EXPECT_TRUE(Run({"--chat", "--tools"}).options.tools);
+  EXPECT_FALSE(Run({"--chat"}).options.tools);
+}
+
 TEST_F(OptionsTest, ChatAndPromptTogetherAreAnError) {
   const auto result = Run({"--chat", "--prompt", "hi"});
   ASSERT_TRUE(result.exit_code.has_value());

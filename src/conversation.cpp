@@ -10,6 +10,14 @@ std::string Reply::Text() const {
   return text;
 }
 
+std::vector<const ToolCallBlock*> Reply::ToolCalls() const {
+  std::vector<const ToolCallBlock*> calls;
+  for (const Block& block : message.blocks) {
+    if (const auto* call = std::get_if<ToolCallBlock>(&block)) calls.push_back(call);
+  }
+  return calls;
+}
+
 std::size_t CountForeignReasoning(const Conversation& conversation, Protocol protocol) {
   std::size_t count = 0;
   for (const Message& message : conversation.messages) {

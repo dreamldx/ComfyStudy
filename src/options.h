@@ -25,6 +25,7 @@ struct Options {
   std::string prompt;                             // --prompt: ask the model one question and exit
   std::string system;                             // --system: an instruction that goes with it
   bool chat = false;                              // --chat: a conversation on the command line
+  bool tools = false;                             // --tools: with --chat, the model may call the tools add and sleep
 #if defined(_WIN32)
   bool dependency_check = false;                  // --dependency-check (Windows only)
 #endif

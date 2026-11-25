@@ -35,6 +35,8 @@ const std::vector<Key>& KnownKeys() {
         {"discord_token", ""},
         {"llm_provider", "openai"},
         {"llm_reasoning", "off"},
+        {"agent_max_steps", "10"},
+        {"agent_turn_timeout_ms", "300000"},
         {"openai_api", "chat"},
         {"openai_model", ""},
         {"openai_api_key", ""},

@@ -411,4 +411,251 @@ TEST(Anthropic, TheErrorTextHasTypeAndMessage) {
   EXPECT_EQ(llm::anthropic::ErrorText(error), "authentication_error: invalid x-api-key");
 }
 
+// ---- Tool calls --------------------------------------------------------------------------------
+
+llm::ToolDefinition AddTool() {
+  return llm::ToolDefinition{
+      "add", "Adds two numbers.",
+      Json{{"type", "object"},
+           {"properties", {{"a", {{"type", "number"}}}, {"b", {{"type", "number"}}}}},
+           {"required", json::Array({"a", "b"})}}};
+}
+
+llm::Options WithTools() {
+  llm::Options options = Limit(256);
+  options.tools.push_back(AddTool());
+  return options;
+}
+
+// A tool call as the Chat and Responses formats give it: the arguments are text.
+llm::Block CallWithText(const std::string& id, const std::string& arguments_text, const std::string& item_id = "") {
+  return llm::ToolCallBlock{id, "add", json::Parse(arguments_text), arguments_text, item_id};
+}
+
+// A tool call as the Anthropic format gives it: the input is an object.
+llm::Block CallWithObject(const std::string& id, Json input) { return llm::ToolCallBlock{id, "add", std::move(input), "", ""}; }
+
+llm::Message ResultsOf(std::vector<llm::Block> blocks) { return {llm::Role::kUser, std::move(blocks)}; }
+
+llm::Block Result(const std::string& call_id, const std::string& text, bool is_error = false) {
+  return llm::ToolResultBlock{call_id, text, is_error};
+}
+
+// user, assistant (the given blocks), user (the given results)
+llm::Conversation ToolTurn(std::vector<llm::Block> assistant, std::vector<llm::Block> results) {
+  llm::Conversation conversation;
+  conversation.messages.push_back(User("add things"));
+  conversation.messages.push_back(Assistant(std::move(assistant)));
+  conversation.messages.push_back(ResultsOf(std::move(results)));
+  return conversation;
+}
+
+TEST(ToolCalls, TheReplyListsItsCallsInOrder) {
+  llm::Reply reply;
+  reply.message.role = llm::Role::kAssistant;
+  reply.message.blocks = {llm::TextBlock{"let me"}, CallWithObject("x1", Json{{"a", 1}}), CallWithObject("x2", Json{{"a", 2}})};
+  const auto calls = reply.ToolCalls();
+  ASSERT_EQ(calls.size(), 2u);
+  EXPECT_EQ(calls[0]->id, "x1");
+  EXPECT_EQ(calls[1]->id, "x2");
+  EXPECT_EQ(reply.Text(), "let me");
+}
+
+TEST(ToolCalls, OpenAiChatListsTheToolsAndReadsTheCalls) {
+  const llm::Provider provider = ProviderFor(llm::Protocol::kOpenAIChat);
+  const Json with = json::Parse(llm::openai_chat::BuildRequest(provider, Question(), WithTools()).body);
+  ASSERT_EQ(with["tools"].size(), 1u);
+  EXPECT_EQ(with["tools"][0], (Json{{"type", "function"},
+                                    {"function", {{"name", "add"}, {"description", "Adds two numbers."}, {"parameters", AddTool().parameters}}}}));
+  EXPECT_FALSE(json::Parse(llm::openai_chat::BuildRequest(provider, Question(), Limit(256)).body).contains("tools"));
+
+  const std::string answer = R"({"choices": [{"message": {"role": "assistant", "content": null, "tool_calls": [
+      {"id": "call_1", "type": "function", "function": {"name": "add", "arguments": "{\n\"a\": 2, \"b\": 3}"}},
+      {"id": "call_2", "type": "function", "function": {"name": "add", "arguments": "{\"a\":4,\"b\":5}"}}]},
+      "finish_reason": "tool_calls"}], "usage": {"prompt_tokens": 9, "completion_tokens": 2}})";
+  const llm::Reply reply = llm::openai_chat::ParseReply(answer);
+  EXPECT_EQ(reply.stop_reason, "tool_calls");
+  EXPECT_EQ(reply.Text(), "");
+  const auto calls = reply.ToolCalls();
+  ASSERT_EQ(calls.size(), 2u);
+  EXPECT_EQ(calls[0]->id, "call_1");
+  EXPECT_EQ(calls[0]->name, "add");
+  EXPECT_EQ(calls[0]->arguments, (Json{{"a", 2}, {"b", 3}}));
+  EXPECT_EQ(calls[0]->arguments_text, "{\n\"a\": 2, \"b\": 3}");  // kept as it came
+  EXPECT_EQ(calls[1]->id, "call_2");
+}
+
+TEST(ToolCalls, OpenAiChatArgumentsSentAsAnObjectAreReadToo) {
+  // Some OpenAI-compatible servers send an object where the format says a string.
+  const std::string answer = R"({"choices": [{"message": {"role": "assistant", "content": null, "tool_calls": [
+      {"id": "call_1", "type": "function", "function": {"name": "add", "arguments": {"a": 2, "b": 3}}}]},
+      "finish_reason": "tool_calls"}]})";
+  const llm::Reply reply = llm::openai_chat::ParseReply(answer);  // the calls point into it
+  const auto calls = reply.ToolCalls();
+  ASSERT_EQ(calls.size(), 1u);
+  EXPECT_EQ(calls[0]->arguments, (Json{{"a", 2}, {"b", 3}}));
+  EXPECT_EQ(json::Parse(calls[0]->arguments_text), (Json{{"a", 2}, {"b", 3}}));
+}
+
+TEST(ToolCalls, OpenAiChatArgumentsThatAreNotJsonAreKeptAsTextAndDoNotThrow) {
+  const std::string answer = R"({"choices": [{"message": {"role": "assistant", "content": "ok", "tool_calls": [
+      {"id": "call_1", "type": "function", "function": {"name": "add", "arguments": "{oops"}}]},
+      "finish_reason": "tool_calls"}]})";
+  const llm::Reply reply = llm::openai_chat::ParseReply(answer);
+  const auto calls = reply.ToolCalls();
+  ASSERT_EQ(calls.size(), 1u);
+  EXPECT_TRUE(calls[0]->arguments.is_null());
+  EXPECT_EQ(calls[0]->arguments_text, "{oops");
+  EXPECT_EQ(reply.Text(), "ok");  // the text before the calls is kept
+
+  // and the call goes back as it came
+  const Json body = json::Parse(llm::openai_chat::BuildRequest(
+      ProviderFor(llm::Protocol::kOpenAIChat), ToolTurn({reply.message.blocks[0], reply.message.blocks[1]}, {Result("call_1", "bad arguments", true)}),
+      Limit(256)).body);
+  EXPECT_EQ(body["messages"][1]["tool_calls"][0]["function"]["arguments"], "{oops");
+}
+
+TEST(ToolCalls, OpenAiChatEncodesCallsAndResultsAsTheirOwnMessages) {
+  const llm::Conversation conversation = ToolTurn({CallWithText("call_1", R"({"a":1,"b":2})"), CallWithText("call_2", R"({"a":3,"b":4})")},
+                                                  {Result("call_1", "3"), Result("call_2", "boom", true)});
+  const Json body = json::Parse(llm::openai_chat::BuildRequest(ProviderFor(llm::Protocol::kOpenAIChat), conversation, WithTools()).body);
+  ASSERT_EQ(body["messages"].size(), 4u);
+  EXPECT_EQ(body["messages"][1]["role"], "assistant");
+  EXPECT_TRUE(body["messages"][1]["content"].is_null());
+  ASSERT_EQ(body["messages"][1]["tool_calls"].size(), 2u);
+  EXPECT_EQ(body["messages"][1]["tool_calls"][0],
+            (Json{{"id", "call_1"}, {"type", "function"}, {"function", {{"name", "add"}, {"arguments", R"({"a":1,"b":2})"}}}}));
+  EXPECT_EQ(body["messages"][2], (Json{{"role", "tool"}, {"tool_call_id", "call_1"}, {"content", "3"}}));
+  EXPECT_EQ(body["messages"][3], (Json{{"role", "tool"}, {"tool_call_id", "call_2"}, {"content", "boom"}}));
+}
+
+TEST(ToolCalls, OpenAiChatCallsWithoutTextAreEncodedFromTheParsedArguments) {
+  llm::Block call = llm::ToolCallBlock{"c1", "add", Json{{"a", 1}, {"b", 2}}, "", ""};  // as if it came from Anthropic
+  const Json body = json::Parse(llm::openai_chat::BuildRequest(ProviderFor(llm::Protocol::kOpenAIChat),
+                                                               ToolTurn({call}, {Result("c1", "3")}), Limit(256)).body);
+  EXPECT_EQ(json::Parse(body["messages"][1]["tool_calls"][0]["function"]["arguments"].get<std::string>()), (Json{{"a", 1}, {"b", 2}}));
+}
+
+TEST(ToolCalls, OpenAiChatSteeringTextAfterTheResultsIsAUserMessage) {
+  const llm::Conversation conversation =
+      ToolTurn({CallWithText("call_1", R"({"a":1,"b":2})")}, {Result("call_1", "3"), Text("[new] and also this")});
+  const Json body = json::Parse(llm::openai_chat::BuildRequest(ProviderFor(llm::Protocol::kOpenAIChat), conversation, WithTools()).body);
+  ASSERT_EQ(body["messages"].size(), 4u);
+  EXPECT_EQ(body["messages"][2]["role"], "tool");
+  EXPECT_EQ(body["messages"][3], (Json{{"role", "user"}, {"content", "[new] and also this"}}));
+}
+
+TEST(ToolCalls, OpenAiResponsesListsTheToolsAndReadsTheCallsAfterTheReasoningItem) {
+  const llm::Provider provider = ProviderFor(llm::Protocol::kOpenAIResponses);
+  const Json with = json::Parse(llm::openai_responses::BuildRequest(provider, Question(), WithTools()).body);
+  ASSERT_EQ(with["tools"].size(), 1u);
+  EXPECT_EQ(with["tools"][0],
+            (Json{{"type", "function"}, {"name", "add"}, {"description", "Adds two numbers."}, {"parameters", AddTool().parameters}}));
+  EXPECT_FALSE(json::Parse(llm::openai_responses::BuildRequest(provider, Question(), Limit(256)).body).contains("tools"));
+
+  const std::string answer = R"({"status": "completed", "output": [
+      {"type": "reasoning", "id": "rs_1", "summary": [], "encrypted_content": "E=="},
+      {"type": "function_call", "id": "fc_1", "call_id": "call_1", "name": "add", "arguments": "{\"a\":2,\"b\":3}"},
+      {"type": "function_call", "id": "fc_2", "call_id": "call_2", "name": "add", "arguments": "{\"a\":4,\"b\":5}"}],
+      "usage": {"input_tokens": 9, "output_tokens": 5}})";
+  const llm::Reply reply = llm::openai_responses::ParseReply(answer);
+  ASSERT_EQ(reply.message.blocks.size(), 3u);
+  EXPECT_TRUE(std::holds_alternative<llm::ReasoningBlock>(reply.message.blocks[0]));
+  const auto calls = reply.ToolCalls();
+  ASSERT_EQ(calls.size(), 2u);
+  EXPECT_EQ(calls[0]->id, "call_1");
+  EXPECT_EQ(calls[0]->item_id, "fc_1");
+  EXPECT_EQ(calls[0]->arguments, (Json{{"a", 2}, {"b", 3}}));
+  EXPECT_EQ(calls[0]->arguments_text, R"({"a":2,"b":3})");
+}
+
+TEST(ToolCalls, OpenAiResponsesEncodesCallsAndResultsAsItemsAndKeepsTheReasoningItemFirst) {
+  const Json item = {{"type", "reasoning"}, {"id", "rs_1"}, {"summary", json::Array()}, {"encrypted_content", "E=="}};
+  const llm::Conversation conversation = ToolTurn({Reasoning(llm::Protocol::kOpenAIResponses, item), Text("adding"),
+                                                   CallWithText("call_1", R"({"a":1,"b":2})", "fc_1"), CallWithText("call_2", R"({"a":3,"b":4})")},
+                                                  {Result("call_1", "3"), Result("call_2", "7")});
+  const Json body = json::Parse(llm::openai_responses::BuildRequest(ProviderFor(llm::Protocol::kOpenAIResponses), conversation, WithTools()).body);
+  const Json& input = body["input"];
+  ASSERT_EQ(input.size(), 7u);
+  EXPECT_EQ(input[0], (Json{{"role", "user"}, {"content", "add things"}}));
+  EXPECT_EQ(input[1], item);
+  EXPECT_EQ(input[2], (Json{{"role", "assistant"}, {"content", "adding"}}));
+  EXPECT_EQ(input[3], (Json{{"type", "function_call"}, {"id", "fc_1"}, {"call_id", "call_1"}, {"name", "add"}, {"arguments", R"({"a":1,"b":2})"}}));
+  EXPECT_FALSE(input[4].contains("id"));  // no item id was given for the second call
+  EXPECT_EQ(input[4]["call_id"], "call_2");
+  EXPECT_EQ(input[5], (Json{{"type", "function_call_output"}, {"call_id", "call_1"}, {"output", "3"}}));
+  EXPECT_EQ(input[6], (Json{{"type", "function_call_output"}, {"call_id", "call_2"}, {"output", "7"}}));
+}
+
+TEST(ToolCalls, OpenAiResponsesSteeringTextAfterTheResultsIsAUserMessage) {
+  const llm::Conversation conversation =
+      ToolTurn({CallWithText("call_1", R"({"a":1,"b":2})")}, {Result("call_1", "3"), Text("[new] more")});
+  const Json body = json::Parse(llm::openai_responses::BuildRequest(ProviderFor(llm::Protocol::kOpenAIResponses), conversation, WithTools()).body);
+  const Json& input = body["input"];
+  ASSERT_EQ(input.size(), 4u);
+  EXPECT_EQ(input[2]["type"], "function_call_output");
+  EXPECT_EQ(input[3], (Json{{"role", "user"}, {"content", "[new] more"}}));
+}
+
+TEST(ToolCalls, AnthropicListsTheToolsAndReadsTheToolUseBlocks) {
+  const llm::Provider provider = ProviderFor(llm::Protocol::kAnthropic, "https://a.test");
+  const Json with = json::Parse(llm::anthropic::BuildRequest(provider, Question(), WithTools()).body);
+  ASSERT_EQ(with["tools"].size(), 1u);
+  EXPECT_EQ(with["tools"][0], (Json{{"name", "add"}, {"description", "Adds two numbers."}, {"input_schema", AddTool().parameters}}));
+  EXPECT_FALSE(json::Parse(llm::anthropic::BuildRequest(provider, Question(), Limit(256)).body).contains("tools"));
+
+  const std::string answer = R"({"content": [
+      {"type": "thinking", "thinking": "", "signature": "S"},
+      {"type": "text", "text": "adding"},
+      {"type": "tool_use", "id": "toolu_1", "name": "add", "input": {"a": 2, "b": 3}},
+      {"type": "tool_use", "id": "toolu_2", "name": "add", "input": {"a": 4, "b": 5}}],
+      "stop_reason": "tool_use", "usage": {"input_tokens": 9, "output_tokens": 5}})";
+  const llm::Reply reply = llm::anthropic::ParseReply(answer);
+  EXPECT_EQ(reply.stop_reason, "tool_use");
+  ASSERT_EQ(reply.message.blocks.size(), 4u);
+  const auto calls = reply.ToolCalls();
+  ASSERT_EQ(calls.size(), 2u);
+  EXPECT_EQ(calls[0]->id, "toolu_1");
+  EXPECT_EQ(calls[0]->arguments, (Json{{"a", 2}, {"b", 3}}));
+  EXPECT_EQ(calls[0]->arguments_text, "");
+}
+
+TEST(ToolCalls, AnthropicPutsAllResultsOfAStepFirstInOneUserMessage) {
+  const llm::Conversation conversation =
+      ToolTurn({Reasoning(llm::Protocol::kAnthropic, kSignedThinking), Text("adding"), CallWithObject("toolu_1", Json{{"a", 1}, {"b", 2}}),
+                CallWithObject("toolu_2", Json{{"a", 3}, {"b", 4}})},
+               {Result("toolu_1", "3"), Result("toolu_2", "boom", true), Text("[new] and this")});
+  const Json body = json::Parse(llm::anthropic::BuildRequest(ProviderFor(llm::Protocol::kAnthropic, "https://a.test"), conversation, WithTools()).body);
+  ASSERT_EQ(body["messages"].size(), 3u);
+  const Json& assistant = body["messages"][1]["content"];
+  ASSERT_EQ(assistant.size(), 4u);
+  EXPECT_EQ(assistant[0], kSignedThinking);
+  EXPECT_EQ(assistant[2], (Json{{"type", "tool_use"}, {"id", "toolu_1"}, {"name", "add"}, {"input", {{"a", 1}, {"b", 2}}}}));
+  const Json& user = body["messages"][2];
+  EXPECT_EQ(user["role"], "user");
+  ASSERT_EQ(user["content"].size(), 3u);
+  EXPECT_EQ(user["content"][0], (Json{{"type", "tool_result"}, {"tool_use_id", "toolu_1"}, {"content", "3"}}));
+  EXPECT_EQ(user["content"][1], (Json{{"type", "tool_result"}, {"tool_use_id", "toolu_2"}, {"content", "boom"}, {"is_error", true}}));
+  EXPECT_EQ(user["content"][2], (Json{{"type", "text"}, {"text", "[new] and this"}}));  // text only after the results
+}
+
+TEST(ToolCalls, ACallThatCameFromAnotherProtocolIsEncodedAgain) {
+  // The call and its result are plain data, so a history made with Chat can go to the other two.
+  const llm::Conversation conversation =
+      ToolTurn({CallWithText("call_1", R"({"a":1,"b":2})")}, {Result("call_1", "3")});
+  const Json to_anthropic = json::Parse(llm::anthropic::BuildRequest(ProviderFor(llm::Protocol::kAnthropic, "https://a.test"), conversation, WithTools()).body);
+  EXPECT_EQ(to_anthropic["messages"][1]["content"][0]["input"], (Json{{"a", 1}, {"b", 2}}));
+  EXPECT_EQ(to_anthropic["messages"][2]["content"][0]["tool_use_id"], "call_1");
+  const Json to_responses = json::Parse(llm::openai_responses::BuildRequest(ProviderFor(llm::Protocol::kOpenAIResponses), conversation, WithTools()).body);
+  EXPECT_EQ(to_responses["input"][1]["call_id"], "call_1");
+  EXPECT_EQ(to_responses["input"][1]["arguments"], R"({"a":1,"b":2})");
+}
+
+TEST(ToolCalls, AnAnthropicCallWithUnusableArgumentsGoesOutWithAnEmptyObject) {
+  llm::Block call = llm::ToolCallBlock{"c1", "add", Json(nullptr), "{oops", ""};  // as the Chat parser leaves it
+  const Json body = json::Parse(llm::anthropic::BuildRequest(ProviderFor(llm::Protocol::kAnthropic, "https://a.test"),
+                                                             ToolTurn({call}, {Result("c1", "bad arguments", true)}), WithTools()).body);
+  EXPECT_EQ(body["messages"][1]["content"][0]["input"], json::Object());
+}
+
 }  // namespace

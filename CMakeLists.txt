@@ -35,7 +35,7 @@ target_compile_definitions(comfystudy_asio INTERFACE _WIN32_WINNT=0x0A00 BOOST_A
 add_library(comfystudy_core STATIC
   src/greeting.cpp src/net_probe.cpp src/options.cpp src/config.cpp
   src/http_client.cpp src/curl_transport.cpp src/conversation.cpp src/provider.cpp
-  src/json.cpp src/llm_wire.cpp src/llm_client.cpp src/chat.cpp
+  src/json.cpp src/llm_wire.cpp src/llm_client.cpp src/tool.cpp src/agent.cpp src/console_hook.cpp src/chat.cpp
   ${COMFYSTUDY_PLATFORM_SOURCES})
 target_include_directories(comfystudy_core PUBLIC src)
 target_link_libraries(comfystudy_core PUBLIC comfystudy_options comfystudy_asio

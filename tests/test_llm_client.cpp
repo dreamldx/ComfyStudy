@@ -306,6 +306,24 @@ TEST(LlmGenerate, ScriptedBodiesAreDecodedBackIntoTheReplyTheyWereMadeFrom) {
   EXPECT_EQ(from_chat.Text(), "Hello");
 }
 
+TEST(LlmGenerate, ScriptedBodiesCarryToolCallsToo) {
+  llm::Reply reply;
+  reply.message.role = llm::Role::kAssistant;
+  reply.message.blocks.push_back(llm::TextBlock{"adding"});
+  reply.message.blocks.push_back(llm::ToolCallBlock{"call_1", "add", Json{{"a", 1}, {"b", 2}}, "", ""});
+  reply.message.blocks.push_back(llm::ToolCallBlock{"call_2", "add", Json{{"a", 3}, {"b", 4}}, "", ""});
+  reply.stop_reason = "tool_calls";
+
+  for (const llm::Reply& read : {llm::openai_chat::ParseReply(ChatBody(reply)), llm::openai_responses::ParseReply(ResponsesBody(reply)),
+                                 llm::anthropic::ParseReply(AnthropicBody(reply))}) {
+    const auto calls = read.ToolCalls();
+    ASSERT_EQ(calls.size(), 2u);
+    EXPECT_EQ(calls[0]->id, "call_1");
+    EXPECT_EQ(calls[0]->arguments, (Json{{"a", 1}, {"b", 2}}));
+    EXPECT_EQ(calls[1]->id, "call_2");
+  }
+}
+
 TEST(LlmGenerate, ARequestBeyondTheScriptIsAFailureOfTheTest) {
   ScriptedTransport transport({});
   llm::Conversation conversation;

@@ -50,14 +50,20 @@ inline json::Value TokenCounts(const llm::Reply& reply, const char* input, const
 }
 
 inline std::string ChatBody(const llm::Reply& reply) {
-    const std::string text = reply.Text();
+  const std::string text = reply.Text();
   json::Value message = {{"role", "assistant"}, {"content", text.empty() ? json::Value{} : json::Value(text)}};
+  json::Value calls = json::Array();
+  for (const llm::ToolCallBlock* call : reply.ToolCalls()) {
+    const std::string arguments = call->arguments_text.empty() ? json::Dump(call->arguments) : call->arguments_text;
+    json::Push(calls, {{"id", call->id}, {"type", "function"}, {"function", {{"name", call->name}, {"arguments", arguments}}}});
+  }
+  if (!calls.get_array().empty()) message["tool_calls"] = calls;
   return json::Dump(json::Value{{"choices", json::Array({{{"message", message}, {"finish_reason", reply.stop_reason}}})},
               {"usage", TokenCounts(reply, "prompt_tokens", "completion_tokens")}});
 }
 
 inline std::string ResponsesBody(const llm::Reply& reply) {
-    json::Value output = json::Array();
+  json::Value output = json::Array();
   for (const llm::Block& block : reply.message.blocks) {
     if (const auto* reasoning = std::get_if<llm::ReasoningBlock>(&block)) {
       if (reasoning->origin == llm::Protocol::kOpenAIResponses) json::Push(output, reasoning->payload);
@@ -65,6 +71,13 @@ inline std::string ResponsesBody(const llm::Reply& reply) {
       json::Push(output, {{"type", "message"},
                         {"role", "assistant"},
                         {"content", json::Array({{{"type", "output_text"}, {"text", text->text}}})}});
+    } else if (const auto* call = std::get_if<llm::ToolCallBlock>(&block)) {
+      const std::string arguments = call->arguments_text.empty() ? json::Dump(call->arguments) : call->arguments_text;
+      json::Push(output, {{"type", "function_call"},
+                        {"id", call->item_id.empty() ? "fc_" + call->id : call->item_id},
+                        {"call_id", call->id},
+                        {"name", call->name},
+                        {"arguments", arguments}});
     }
   }
   json::Value body = {{"output", output}, {"usage", TokenCounts(reply, "input_tokens", "output_tokens")}};
@@ -78,12 +91,14 @@ inline std::string ResponsesBody(const llm::Reply& reply) {
 }
 
 inline std::string AnthropicBody(const llm::Reply& reply) {
-    json::Value content = json::Array();
+  json::Value content = json::Array();
   for (const llm::Block& block : reply.message.blocks) {
     if (const auto* reasoning = std::get_if<llm::ReasoningBlock>(&block)) {
       if (reasoning->origin == llm::Protocol::kAnthropic) json::Push(content, reasoning->payload);
     } else if (const auto* text = std::get_if<llm::TextBlock>(&block)) {
       json::Push(content, {{"type", "text"}, {"text", text->text}});
+    } else if (const auto* call = std::get_if<llm::ToolCallBlock>(&block)) {
+      json::Push(content, {{"type", "tool_use"}, {"id", call->id}, {"name", call->name}, {"input", call->arguments}});
     }
   }
   return json::Dump(json::Value{{"type", "message"},

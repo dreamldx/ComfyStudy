@@ -2,8 +2,9 @@
 
 #include <algorithm>
 
-#include "json.h"
 #include <spdlog/spdlog.h>
+
+#include "json.h"
 
 namespace llm {
 namespace {
@@ -123,6 +124,27 @@ const json::Value* SendablePayload(const Block& block, Protocol protocol) {
   return reasoning != nullptr && reasoning->origin == protocol ? &reasoning->payload : nullptr;
 }
 
+// The arguments of a call as the text that goes out in the formats that take text (Chat, Responses):
+// the text as it was received, or else the arguments written out.
+std::string ArgumentsText(const ToolCallBlock& call) {
+  if (!call.arguments_text.empty()) return call.arguments_text;
+  return call.arguments.is_null() ? std::string("{}") : json::Dump(call.arguments);
+}
+
+// The arguments of a call as the object the Anthropic format takes ({} when there is no object).
+json::Value ArgumentsObject(const ToolCallBlock& call) { return call.arguments.is_object() ? call.arguments : json::Object(); }
+
+// The arguments text of a call read from an answer. Text that is not JSON is not an error here: the
+// call is kept (with null arguments) and the loop answers it with an error result.
+json::Value ParseArguments(const std::string& text) {
+  if (text.empty()) return json::Object();
+  try {
+    return json::Parse(text);
+  } catch (const json::ParseError&) {
+    return json::Value{};
+  }
+}
+
 const char* RoleName(Role role) { return role == Role::kUser ? "user" : "assistant"; }
 
 const char* EffortName(Reasoning reasoning) {
@@ -170,13 +192,36 @@ HttpRequest BuildRequest(const Provider& provider, const Conversation& conversat
   if (!conversation.system.empty()) {
     json::Push(messages, {{"role", "system"}, {"content", Utf8(conversation.system)}});
   }
-  // This format has no place for reasoning blocks: only the text goes out.
+  // This format has no place for reasoning blocks: only the text and the tool calls go out. Every
+  // result is a message of its own (role "tool"); the text after the results is a user message.
   for (const Message& message : conversation.messages) {
     const std::string text = TextOf(message);
-    if (!text.empty()) json::Push(messages, {{"role", RoleName(message.role)}, {"content", text}});
+    json::Value calls = json::Array();
+    for (const Block& block : message.blocks) {
+      if (const auto* result = std::get_if<ToolResultBlock>(&block)) {
+        json::Push(messages, {{"role", "tool"}, {"tool_call_id", result->call_id}, {"content", Utf8(result->text)}});
+      } else if (const auto* call = std::get_if<ToolCallBlock>(&block)) {
+        json::Push(calls, {{"id", call->id},
+                           {"type", "function"},
+                           {"function", {{"name", call->name}, {"arguments", ArgumentsText(*call)}}}});
+      }
+    }
+    if (!calls.get_array().empty()) {
+      json::Push(messages, {{"role", "assistant"}, {"content", text.empty() ? json::Value{} : json::Value(text)}, {"tool_calls", calls}});
+    } else if (!text.empty()) {
+      json::Push(messages, {{"role", RoleName(message.role)}, {"content", text}});
+    }
   }
 
   json::Value body = {{"model", provider.model}, {"messages", messages}, {"max_completion_tokens", options.max_tokens}};
+  if (!options.tools.empty()) {
+    json::Value tools = json::Array();
+    for (const ToolDefinition& tool : options.tools) {
+      json::Push(tools, {{"type", "function"},
+                         {"function", {{"name", tool.name}, {"description", Utf8(tool.description)}, {"parameters", tool.parameters}}}});
+    }
+    body["tools"] = tools;
+  }
   if (options.reasoning != Reasoning::kOff) body["reasoning_effort"] = EffortName(options.reasoning);
   return HttpRequest{WithoutTrailingSlash(provider.endpoint.base_url) + "/chat/completions",
                      JsonHeaders({{"Authorization", "Bearer " + provider.endpoint.api_key}}), json::Dump(body)};
@@ -186,16 +231,30 @@ Reply ParseReply(const std::string& body) {
   const json::Value root = ParseJson(body);
   const json::Value& object = Object(root);
   const json::Value* choices = json::Find(object, "choices");
-  if (choices == nullptr || !choices->is_array() || choices->empty()) {
+  if (choices == nullptr || !choices->is_array() || json::Items(*choices).empty()) {
     throw Error("the answer has no \"choices\"");
   }
-  const json::Value& first = (*choices)[0];
+  const json::Value& first = json::Items(*choices)[0];
   Reply reply = NewReply();
   reply.stop_reason = String(first, "finish_reason");
   const json::Value* message = json::Find(first, "message");
   if (message != nullptr && message->is_object()) {
     const std::string text = String(*message, "content");
     if (!text.empty()) reply.message.blocks.push_back(TextBlock{text});
+    const json::Value* calls = json::Find(*message, "tool_calls");
+    if (calls != nullptr && calls->is_array()) {
+      for (const json::Value& call : json::Items(*calls)) {
+        const json::Value* function = json::Find(call, "function");
+        if (function == nullptr || !function->is_object()) continue;
+        // The format says text, and the text is not always valid JSON; some compatible servers send an
+        // object instead, which is taken as it is.
+        const json::Value* raw = json::Find(*function, "arguments");
+        const bool is_object = raw != nullptr && raw->is_object();
+        const std::string arguments = is_object ? json::Dump(*raw) : String(*function, "arguments");
+        reply.message.blocks.push_back(ToolCallBlock{String(call, "id"), String(*function, "name"),
+                                                     is_object ? *raw : ParseArguments(arguments), arguments, ""});
+      }
+    }
   }
   ReadUsage(object, reply, "prompt_tokens", "completion_tokens");
   return reply;
@@ -215,15 +274,36 @@ HttpRequest BuildRequest(const Provider& provider, const Conversation& conversat
     for (const Block& block : message.blocks) {
       if (const json::Value* payload = SendablePayload(block, Protocol::kOpenAIResponses)) json::Push(input, *payload);
     }
+    // The results of a Step come first, then the text (steering) that followed them; the calls of
+    // an assistant message come after its text, each as an item of its own.
+    for (const Block& block : message.blocks) {
+      if (const auto* result = std::get_if<ToolResultBlock>(&block)) {
+        json::Push(input, {{"type", "function_call_output"}, {"call_id", result->call_id}, {"output", Utf8(result->text)}});
+      }
+    }
     const std::string text = TextOf(message);
     if (!text.empty()) json::Push(input, {{"role", RoleName(message.role)}, {"content", text}});
+    for (const Block& block : message.blocks) {
+      if (const auto* call = std::get_if<ToolCallBlock>(&block)) {
+        json::Value item = {{"type", "function_call"}, {"call_id", call->id}, {"name", call->name}, {"arguments", ArgumentsText(*call)}};
+        if (!call->item_id.empty()) item["id"] = call->item_id;
+        json::Push(input, item);
+      }
+    }
   }
 
   json::Value body = {{"model", provider.model},
-               {"input", input},
-               // the API does not accept fewer than 16 output tokens
-               {"max_output_tokens", std::max(16, options.max_tokens)}};
+                      {"input", input},
+                      // the API does not accept fewer than 16 output tokens
+                      {"max_output_tokens", std::max(16, options.max_tokens)}};
   if (!conversation.system.empty()) body["instructions"] = Utf8(conversation.system);  // a field of its own
+  if (!options.tools.empty()) {
+    json::Value tools = json::Array();
+    for (const ToolDefinition& tool : options.tools) {  // flat here, not nested under "function"
+      json::Push(tools, {{"type", "function"}, {"name", tool.name}, {"description", Utf8(tool.description)}, {"parameters", tool.parameters}});
+    }
+    body["tools"] = tools;
+  }
   if (options.reasoning != Reasoning::kOff) {
     body["reasoning"] = {{"effort", EffortName(options.reasoning)}};
     // Nothing is kept at the service, so the reasoning items come back with their content
@@ -269,6 +349,10 @@ Reply ParseReply(const std::string& body) {
         }
       }
       if (!text.empty()) reply.message.blocks.push_back(TextBlock{text});
+    } else if (type == "function_call") {
+      const std::string arguments = String(item, "arguments");  // text, and not always valid JSON
+      reply.message.blocks.push_back(
+          ToolCallBlock{String(item, "call_id"), String(item, "name"), ParseArguments(arguments), arguments, String(item, "id")});
     } else {
       spdlog::warn("ignoring an output item of type \"{}\"", type);
     }
@@ -300,15 +384,29 @@ HttpRequest BuildRequest(const Provider& provider, const Conversation& conversat
         json::Push(content, *payload);
       } else if (const auto* text = std::get_if<TextBlock>(&block)) {
         if (!text->text.empty()) json::Push(content, {{"type", "text"}, {"text", Utf8(text->text)}});
+      } else if (const auto* call = std::get_if<ToolCallBlock>(&block)) {
+        json::Push(content, {{"type", "tool_use"}, {"id", call->id}, {"name", call->name}, {"input", ArgumentsObject(*call)}});
+      } else if (const auto* result = std::get_if<ToolResultBlock>(&block)) {
+        // All the results of a Step are in one user message, in front of any text (the service insists).
+        json::Value item = {{"type", "tool_result"}, {"tool_use_id", result->call_id}, {"content", Utf8(result->text)}};
+        if (result->is_error) item["is_error"] = true;
+        json::Push(content, item);
       }
     }
-    if (!content.empty()) json::Push(messages, {{"role", RoleName(message.role)}, {"content", content}});
+    if (!content.get_array().empty()) json::Push(messages, {{"role", RoleName(message.role)}, {"content", content}});
   }
 
   json::Value body = {{"model", provider.model},
-               {"max_tokens", options.max_tokens},  // required here
-               {"messages", messages}};
+                      {"max_tokens", options.max_tokens},  // required here
+                      {"messages", messages}};
   if (!conversation.system.empty()) body["system"] = Utf8(conversation.system);  // top level, not a message
+  if (!options.tools.empty()) {
+    json::Value tools = json::Array();
+    for (const ToolDefinition& tool : options.tools) {
+      json::Push(tools, {{"name", tool.name}, {"description", Utf8(tool.description)}, {"input_schema", tool.parameters}});
+    }
+    body["tools"] = tools;
+  }
   if (options.reasoning != Reasoning::kOff) {
     // The models of today decide for themselves whether and how long to think; "effort" is the hint.
     // Without "display" the thinking text comes back empty (only the signature is there).
@@ -336,6 +434,10 @@ Reply ParseReply(const std::string& body) {
       reply.message.blocks.push_back(ReasoningBlock{Protocol::kAnthropic, block, String(block, "thinking")});
     } else if (type == "redacted_thinking") {
       reply.message.blocks.push_back(ReasoningBlock{Protocol::kAnthropic, block, ""});
+    } else if (type == "tool_use") {
+      const json::Value* input = json::Find(block, "input");
+      reply.message.blocks.push_back(
+          ToolCallBlock{String(block, "id"), String(block, "name"), input != nullptr ? *input : json::Object(), "", ""});
     } else {
       spdlog::warn("ignoring a content block of type \"{}\"", type);
     }

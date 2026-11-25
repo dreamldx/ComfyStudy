@@ -3,6 +3,7 @@
 #include <curl/curl.h>
 
 #include <CLI/CLI.hpp>
+
 #include "json.h"
 
 std::string CurlVersion() { return curl_version(); }

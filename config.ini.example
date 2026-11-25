@@ -12,6 +12,11 @@ discord_token =
 ; How much the model thinks before it answers: off (the default), low, medium or high.
 ; llm_reasoning = off
 
+; With --chat --tools: the most Steps (model calls) one question may take, and how long the whole
+; answer may take in milliseconds (0: no limit).
+; agent_max_steps = 10
+; agent_turn_timeout_ms = 300000
+
 ; OpenAI, or any OpenAI-compatible server.
 ; Which of OpenAI's two request formats to use: chat (Chat Completions, the default) or responses.
 ; openai_api = chat
