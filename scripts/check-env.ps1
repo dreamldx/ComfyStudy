@@ -1,6 +1,8 @@
 # Checks that the tools the project needs are resolvable in the current shell.
 # Usage (after sourcing scripts\env.ps1): powershell -NoProfile -File scripts\check-env.ps1
 # Exit 0 only if every tool is present; otherwise lists what is missing and exits 1.
+# With -Gpu it also asks the NVIDIA driver whether the GPU can be used (tools\gpu-probe).
+param([switch]$Gpu)
 $ErrorActionPreference = 'Continue'
 
 $missing = New-Object System.Collections.Generic.List[string]
@@ -48,6 +50,48 @@ Check-Tool 'ninja' { param($cmd) 'version ' + (First-Line 'ninja' @('--version')
 Check-Tool 'git' { param($cmd) First-Line 'git' @('--version') }
 Check-Tool 'vcpkg' { param($cmd) $cmd.Source }
 Check-Tool 'powershell' { param($cmd) $cmd.Source }
+
+# -Gpu: the GPU as seen by the NVIDIA driver. nvidia-smi names the card and the driver; tools\gpu-probe
+# (configured on its own, so it does not need the project's dependencies) calls the driver the way a
+# program would. It needs the driver and cuda.lib from the CUDA toolkit, not nvcc.
+if ($Gpu) {
+  $smi = Get-Command 'nvidia-smi' -ErrorAction SilentlyContinue
+  if ($null -eq $smi) {
+    Write-Host 'MISSING nvidia-smi: no NVIDIA driver found'
+    $missing.Add('nvidia-smi')
+  } else {
+    $card = First-Line 'nvidia-smi' @('--query-gpu=name,driver_version', '--format=csv,noheader')
+    $cuda = ''
+    if ((& nvidia-smi 2>&1 | Out-String) -match 'CUDA (?:UMD )?Version:\s*([0-9]+\.[0-9]+)') { $cuda = $Matches[1] }
+    if ($card -eq '' -or $cuda -eq '') {
+      Write-Host 'MISSING nvidia-smi: cannot read the GPU name, the driver or the CUDA version'
+      $missing.Add('nvidia-smi')
+    } else {
+      Write-Host ("OK      nvidia-smi: {0}, supports CUDA {1}" -f $card, $cuda)
+      $probeSource = Join-Path (Split-Path -Parent $PSScriptRoot) 'tools\gpu-probe'
+      $probeBuild = Join-Path ([IO.Path]::GetTempPath()) ('gpu-probe-' + [Guid]::NewGuid().ToString('N'))
+      $step = 'configure'
+      $out = & cmake -S $probeSource -B $probeBuild -G Ninja 2>&1 | Out-String
+      if ($LASTEXITCODE -eq 0 -and $out -notmatch 'no CUDA driver library found') {
+        $step = 'build'
+        $out = & cmake --build $probeBuild 2>&1 | Out-String
+        if ($LASTEXITCODE -eq 0) {
+          $step = 'run'
+          $out = & (Join-Path $probeBuild 'gpu_probe.exe') 2>&1 | Out-String
+        }
+      }
+      if ($step -eq 'run' -and $LASTEXITCODE -eq 0) {
+        $device = ($out -split "`r?`n" | Where-Object { $_ -like 'device 0:*' } | Select-Object -First 1) -replace '^device 0:\s*', ''
+        Write-Host ("OK      gpu: {0}, context created" -f $device)
+      } else {
+        $tail = ($out -split "`r?`n" | Where-Object { $_.Trim() -ne '' } | Select-Object -Last 3) -join ' | '
+        Write-Host ("MISSING gpu: {0} failed: {1}" -f $step, $tail)
+        $missing.Add('gpu')
+      }
+      Remove-Item -LiteralPath $probeBuild -Recurse -Force -ErrorAction SilentlyContinue
+    }
+  }
+}
 
 if ($missing.Count -gt 0) {
   Write-Host ('check-env: FAILED, missing: ' + ($missing -join ', '))

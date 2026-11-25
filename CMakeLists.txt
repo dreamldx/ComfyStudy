@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(ComfyStudy VERSION 0.5.0 LANGUAGES CXX)
+project(ComfyStudy VERSION 0.6.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -43,3 +43,7 @@ comfystudy_platform_targets()
 # Tests: one program per tests/test_*.cpp, run with CTest.
 enable_testing()
 add_subdirectory(tests)
+
+# Can this machine's GPU be used through the NVIDIA driver? A test (label gpu) that is skipped
+# or disabled when there is no driver library or no device. See tools/gpu-probe/probe.cpp.
+add_subdirectory(tools/gpu-probe)
