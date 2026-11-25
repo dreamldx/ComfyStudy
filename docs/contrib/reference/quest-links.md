@@ -209,9 +209,8 @@
 | [platform-1.2 用 vcpkg 管理依赖](../quest-platform-01-linux-foundation/platform-1.2-vcpkg-deps.md) | Linux 阶段 0 | [0.5 DLL 集中管理与依赖检查](../../tutorial/phase-00-toolchain/0.5-dll-management.md) |  |
 | [platform-1.3 Linux 的 CMake 平台文件与最小移植](../quest-platform-01-linux-foundation/platform-1.3-cmake-linux.md) | Linux 阶段 0 | [0.5 DLL 集中管理与依赖检查](../../tutorial/phase-00-toolchain/0.5-dll-management.md) | 在主线已拆分的平台文件的基础上加 linux.cmake（见 0.1） |
 | [platform-1.4 测试与 Sanitizer](../quest-platform-01-linux-foundation/platform-1.4-tests-sanitizers.md) | Linux 阶段 0 | [0.5 DLL 集中管理与依赖检查](../../tutorial/phase-00-toolchain/0.5-dll-management.md) |  |
-| [platform-1.5 命令行与配置（Linux 分支）](../quest-platform-01-linux-foundation/platform-1.5-cli-config-linux.md) | Linux 阶段 0 | [0.5 DLL 集中管理与依赖检查](../../tutorial/phase-00-toolchain/0.5-dll-management.md) |  |
-| [platform-1.6 GPU 与 CUDA 环境](../quest-platform-01-linux-foundation/platform-1.6-cuda-env.md) | Linux 阶段 0 | [0.5 DLL 集中管理与依赖检查](../../tutorial/phase-00-toolchain/0.5-dll-management.md) |  |
-| [platform-1.7 CI 与本地验证](../quest-platform-01-linux-foundation/platform-1.7-ci-verify.md) | Linux 阶段 0 | [0.5 DLL 集中管理与依赖检查](../../tutorial/phase-00-toolchain/0.5-dll-management.md) |  |
+| [platform-1.5 GPU 与 CUDA 环境](../quest-platform-01-linux-foundation/platform-1.5-cuda-env.md) | Linux 阶段 0 | [0.5 DLL 集中管理与依赖检查](../../tutorial/phase-00-toolchain/0.5-dll-management.md) |  |
+| [platform-1.6 CI 与本地验证](../quest-platform-01-linux-foundation/platform-1.6-ci-verify.md) | Linux 阶段 0 | [0.5 DLL 集中管理与依赖检查](../../tutorial/phase-00-toolchain/0.5-dll-management.md) |  |
 | [platform-2.1 事件循环：Boost.Asio 的定时器与协程（Windows）](../quest-platform-02-event-loop-network/platform-2.1-asio-basics.md) | 事件循环和网络（Windows） | [1.1 HTTP 与 JSON](../../tutorial/phase-01-llm-chat/1.1-http-json.md) |  |
 | [platform-2.2 libcurl 三种用法：在事件循环里的实现与对比（Windows）](../quest-platform-02-event-loop-network/platform-2.2-curl-modes.md) | 事件循环和网络（Windows） | [1.1 HTTP 与 JSON](../../tutorial/phase-01-llm-chat/1.1-http-json.md) |  |
 | [platform-2.3 事件循环（Linux）](../quest-platform-02-event-loop-network/platform-2.3-asio-linux.md) | 事件循环和网络（Linux） | [1.1 HTTP 与 JSON](../../tutorial/phase-01-llm-chat/1.1-http-json.md) |  |

@@ -1,6 +1,6 @@
-# platform-1.7 CI 与本地验证
+# platform-1.6 CI 与本地验证
 
-- 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/platform-01-linux-foundation`（支线不打 tag，用 `git log quest/platform-01-linux-foundation --grep="^chapter-platform-1.7"` 定位本章提交）
+- 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/platform-01-linux-foundation`（支线不打 tag，用 `git log quest/platform-01-linux-foundation --grep="^chapter-platform-1.6"` 定位本章提交）
 - 所属支线：[支线 platform-01：Linux 阶段 0](README.md)
 - 可开始于：主线 [0.5 DLL 集中管理与依赖检查](../../tutorial/phase-00-toolchain/0.5-dll-management.md)
 - 一句话目标：在 `ubuntu-latest` 上用 `debian:sid`（或固定日期快照）容器跑 CPU 测试（无 GPU），并写 `verify.sh`
@@ -15,7 +15,7 @@
 
 ## 3. 本章改动
 
-待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-platform-1.7-ci-verify:` 开头，可用 `git show --stat` 查看。）
+待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-platform-1.6-ci-verify:` 开头，可用 `git show --stat` 查看。）
 
 ## 4. 关键代码讲解
 

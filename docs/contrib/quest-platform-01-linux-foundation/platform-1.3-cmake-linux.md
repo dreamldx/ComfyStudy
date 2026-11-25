@@ -145,7 +145,7 @@ AddressSanitizer 和 UndefinedBehaviorSanitizer 要在编译和链接时都加 `
 - **`config::Get`**：读环境变量，用 `getenv`。`config.h` 里写明“空值当作未设置”，Windows 的实现和 Linux 的都遵守，所以空字符串返回“没有”。
 - **`config::ExeDirectory`**：程序所在的目录，用来找旁边的 `config.toml`。Linux 上 `/proc/self/exe` 是一个符号链接，指向正在运行的可执行文件，读出它再取父目录。读不出来就返回空路径，和 Windows 分支失败时一样。
 
-别的 Linux 做法，比如按 XDG 规范到 `~/.config` 找配置文件、判断终端是不是支持颜色，不属于“能编过”，留给 platform-1.5。
+别的 Linux 做法，比如按 XDG 规范到 `~/.config` 找配置文件、判断终端是不是支持颜色，这条线上不做。XDG 是新功能而不是移植：现在的程序在 Windows 上也只找可执行文件旁边和当前目录，Linux 上同样够用。终端颜色只有 Windows 专用的 `--dependency-check` 用到，Linux 上没有对应的代码。想给 Linux 加 XDG 目录，见练习 6。
 
 ### 2.7 测试里的环境变量
 
@@ -452,7 +452,7 @@ cmake --preset linux-asan && cmake --build --preset linux-asan
   - 预设命名：每个系统用系统名做前缀，`windows-*` 和 `linux-*`（采用）；Windows 保持 `debug`、`release`，只给 Linux 加前缀（否决，两边不对称，命令不好记）；同名加条件（不可行，CMake 不允许同名）。
   - sanitizer 开关：缓存变量加 `add_compile_options` 和 `add_link_options`（采用）；在 `comfystudy_options` 接口库上加链接选项（否决，要改顶层，而顶层目前只传编译选项）。
   - 项目也用链式工具链固定编译器，而不是在平台文件里写 `CMAKE_CXX_COMPILER`：这样固定编译器的来源只有 `linux-gcc.cmake` 一个文件。
-  - 最小移植只做能编、让测试有意义的部分：XDG 目录、终端颜色留给 platform-1.5。
+  - 最小移植只做能编、让测试有意义的部分，不加新功能：XDG 配置目录是新功能（Windows 一侧也没有对应的 `%APPDATA%`），终端颜色在 Linux 上没有使用者，这条线上都不做。
 - 被否决的：在源码里到处写 `#if defined(__linux__)`（系统相关的部分只放在 `config.cpp` 已有的 `#if` 块里）；去掉 `-Werror` 或加 `-Wno-...` 来压警告。
 
 ## 8. 常见问题与坑
@@ -476,6 +476,7 @@ cmake --preset linux-asan && cmake --build --preset linux-asan
 3. 不改预设，直接在命令行里用 `-DCOMFYSTUDY_SANITIZE=undefined` 配置一个只有 UBSan 的构建目录，确认编译和链接选项都变了。
 4. 用 `readlink` 系统调用重写 `ExeDirectory` 的 Linux 分支，测试要保持通过。和 `std::filesystem::read_symlink` 比，哪个更适合这个项目？
 5. 在 `comfystudy_platform_tests()` 里加一个只在 Linux 上存在的测试：运行 `comfystudy` 并检查输出里有 `llm_model=`。
+6. 让 Linux 也到 `$XDG_CONFIG_HOME/comfystudy/`（没设置时是 `~/.config/comfystudy/`）找配置文件：改 `config::ConfigCandidates`，先写测试，决定它排在“可执行文件旁边”和“当前目录”的哪个位置，并想一想为什么。Windows 上要不要也加一个对应的目录？
 
 ## 10. 支线
 

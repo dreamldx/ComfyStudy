@@ -72,17 +72,17 @@ check-env: OK
 
 - **同一台机器上有好几个 GCC。** Debian 的 `g++-11` 到 `g++-16` 是各自独立的包，可以同时装。装机当天这台机器上，`g++` 是 16，`gcc-14`、`gcc-15`、`gcc-16` 也都在。
 - **`g++` 是一个别名。** 它指向哪个版本由系统的默认设置决定。sid 把默认值升到新版本时，你什么都没改，项目就换了编译器。
-- **nvcc 只接受它认可的宿主编译器。** nvcc 按宿主编译器的主版本做检查，超出范围就拒绝。NVIDIA 的资料显示 CUDA 13.0 起支持 GCC 15（[CUDA 13.0 的介绍](https://developer.nvidia.com/blog/whats-new-and-important-in-cuda-toolkit-13-0/)），13.4 起支持 GCC 16（[CUDA 特性归档](https://docs.nvidia.com/cuda/cuda-features-archive/index.html)）。官方安装指南里的宿主编译器表我没有直接查到上限，这一点留到 platform-1.6 装 CUDA 时核对。
+- **nvcc 只接受它认可的宿主编译器。** nvcc 按宿主编译器的主版本做检查，超出范围就拒绝。NVIDIA 的资料显示 CUDA 13.0 起支持 GCC 15（[CUDA 13.0 的介绍](https://developer.nvidia.com/blog/whats-new-and-important-in-cuda-toolkit-13-0/)），13.4 起支持 GCC 16（[CUDA 特性归档](https://docs.nvidia.com/cuda/cuda-features-archive/index.html)）。官方安装指南里的宿主编译器表我没有直接查到上限，这一点留到 platform-1.5 装 CUDA 时核对。
 
 所以本线的做法是：脚本顶部写死主版本 `GCC_MAJOR=16`，只认 `g++-16` 和 `gcc-16`，从不看 `g++`。后面的 CMake 预设也会写 `g++-16`。将来要换版本，改这一个数字和包名，别处不动。
 
 不用 `update-alternatives` 把 `g++` 指过去：那会改整个系统的默认，影响机器上别的项目，而且脚本通过靠的是改系统，不是编译器本身。
 
-选 16 的理由很直接：它是 sid 里最高的版本，也是这台机器已经装好的默认编译器，同时在 CUDA 13.4 之后的支持范围内。如果 platform-1.6 装的 CUDA 低于 13.4，就改成 15，多装一个 `g++-15`。GCC 16 很新，第三方库有可能出警告，这会在 platform-1.3 的 `-Werror` 和 platform-1.2 的 vcpkg 构建里暴露，到时退一档即可，只改这一处。
+选 16 的理由很直接：它是 sid 里最高的版本，也是这台机器已经装好的默认编译器，同时在 CUDA 13.4 之后的支持范围内。如果 platform-1.5 装的 CUDA 低于 13.4，就改成 15，多装一个 `g++-15`。GCC 16 很新，第三方库有可能出警告，这会在 platform-1.3 的 `-Werror` 和 platform-1.2 的 vcpkg 构建里暴露，到时退一档即可，只改这一处。
 
 ### 2.2 滚动发行与“装机当天”
 
-Debian sid 每天都在变。`apt install g++-16` 装到的是当天仓库里的 16.x 的最新小版本，不同的人在不同的日子装，小版本不一定一样。本章不用日期快照把它钉死，那是 platform-1.7 的 CI 容器要做的事。这里只做两件事：只认主版本，并记下装机当天的版本，让读者知道这一套是哪一天验证过的（2026-11-24）：
+Debian sid 每天都在变。`apt install g++-16` 装到的是当天仓库里的 16.x 的最新小版本，不同的人在不同的日子装，小版本不一定一样。本章不用日期快照把它钉死，那是 platform-1.6 的 CI 容器要做的事。这里只做两件事：只认主版本，并记下装机当天的版本，让读者知道这一套是哪一天验证过的（2026-11-24）：
 
 | 工具 | 包 | 版本 |
 |---|---|---|
@@ -126,7 +126,7 @@ glibc 是 2.43。它不是检查项，只是报告出来：后面预编译的 li
 ```bash
 # The compiler is pinned by its major version and always called by its versioned name (g++-N), never
 # through the g++ alias, so a distribution that moves its default compiler does not change what we use.
-# nvcc (chapter platform-1.6) must accept this major version as its host compiler.
+# nvcc (chapter platform-1.5) must accept this major version as its host compiler.
 GCC_MAJOR=16
 CMAKE_MIN_MAJOR=3
 CMAKE_MIN_MINOR=25
@@ -344,9 +344,9 @@ check-env tests: 11 passed, 0 failed
 - 改动检验：把 `GCC_MAJOR` 临时改成 15（机器上有 `gcc-15` 但没有 `g++-15`），脚本报 `g++-15` 缺失；同一份改动下测试有 8 个失败。证明固定的版本号确实在起作用，测试也确实在检查它。改回 16 之后 11 个全过。
 - `--no-smoke`：运行一次约 0.03 秒。
 - 没有做的：
-  - 没有在干净的容器里验证安装清单。清单是否完整，只靠这台机器上“装完 `cmake` 和 `ninja-build` 之后全部通过”来判断，而这台机器本来就装了编译器和 git。容器验证留给 platform-1.7。
+  - 没有在干净的容器里验证安装清单。清单是否完整，只靠这台机器上“装完 `cmake` 和 `ninja-build` 之后全部通过”来判断，而这台机器本来就装了编译器和 git。容器验证留给 platform-1.6。
   - 没有验证 AddressSanitizer 附带的泄漏检测（LeakSanitizer）在容器里的行为，见第 8 节。
-  - 没有验证 CUDA 对 GCC 16 的支持上限，留给 platform-1.6。
+  - 没有验证 CUDA 对 GCC 16 的支持上限，留给 platform-1.5。
 
 ## 7. 技术资料
 
@@ -361,7 +361,7 @@ check-env tests: 11 passed, 0 failed
 
 ## 8. 常见问题与坑
 
-**输出给人看，退出码给脚本看。** 输出里的 `OK`、`MISSING`、`INFO` 前缀对齐成八个字符，方便肉眼扫一遍；退出码 0 和 1 给后面的脚本（比如 platform-1.7 的 `verify.sh`）用。
+**输出给人看，退出码给脚本看。** 输出里的 `OK`、`MISSING`、`INFO` 前缀对齐成八个字符，方便肉眼扫一遍；退出码 0 和 1 给后面的脚本（比如 platform-1.6 的 `verify.sh`）用。
 
 **`set -u` 加空数组。** bash 里展开一个空数组，在 `set -u` 下会报“未绑定的变量”。脚本里用 `"${packages[@]+"${packages[@]}"}"` 的写法：数组不存在或为空时展开成空。
 
@@ -373,7 +373,7 @@ check-env tests: 11 passed, 0 failed
 
 **从 Windows 来的文件。** 仓库的 `.gitattributes` 里有 `* text=auto eol=lf`，`.sh` 在 Windows 上检出时保持 LF 换行，放到 Linux 上直接能跑。但 Windows 上没有“可执行”权限位，把工作目录里的文件直接拷过去会丢失它。通过 git 推送或克隆，权限位（模式 100755）会保留；拷贝过去的话用 `bash scripts/check-env.sh` 运行。
 
-**容器里的泄漏检测。** AddressSanitizer 自带泄漏检测（LeakSanitizer），本章没有在容器里验证过它。如果在容器里试编译的第二步失败，输出里出现 LeakSanitizer 的错误，可以试试给容器加 `--cap-add=SYS_PTRACE`，或者运行时设 `ASAN_OPTIONS=detect_leaks=0`。platform-1.7 用到容器时会实测。
+**容器里的泄漏检测。** AddressSanitizer 自带泄漏检测（LeakSanitizer），本章没有在容器里验证过它。如果在容器里试编译的第二步失败，输出里出现 LeakSanitizer 的错误，可以试试给容器加 `--cap-add=SYS_PTRACE`，或者运行时设 `ASAN_OPTIONS=detect_leaks=0`。platform-1.6 用到容器时会实测。
 
 ## 9. 练习
 

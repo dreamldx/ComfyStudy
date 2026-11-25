@@ -1,6 +1,6 @@
-# platform-1.6 GPU 与 CUDA 环境
+# platform-1.5 GPU 与 CUDA 环境
 
-- 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/platform-01-linux-foundation`（支线不打 tag，用 `git log quest/platform-01-linux-foundation --grep="^chapter-platform-1.6"` 定位本章提交）
+- 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/platform-01-linux-foundation`（支线不打 tag，用 `git log quest/platform-01-linux-foundation --grep="^chapter-platform-1.5"` 定位本章提交）
 - 所属支线：[支线 platform-01：Linux 阶段 0](README.md)
 - 可开始于：主线 [0.5 DLL 集中管理与依赖检查](../../tutorial/phase-00-toolchain/0.5-dll-management.md)
 - 一句话目标：安装 CUDA 13.x 与 cuDNN（vcpkg 里的 `cuda`、`cudnn` 端口版本很旧、只能检测，装不了 13.x，这一步仍用 NVIDIA 官方的安装方式，到时核实）；选定驱动；验证 `nvcc` 与宿主编译器（GCC）的配套；`nvidia-smi` 检查
@@ -15,7 +15,7 @@
 
 ## 3. 本章改动
 
-待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-platform-1.6-cuda-env:` 开头，可用 `git show --stat` 查看。）
+待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-platform-1.5-cuda-env:` 开头，可用 `git show --stat` 查看。）
 
 ## 4. 关键代码讲解
 

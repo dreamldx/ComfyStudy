@@ -46,7 +46,7 @@ Linux 实现只存在于这些分支里（platform-02 的前两章是 Windows �
 
 | 编号 | 主题 | 类型 | 类别 | 章节数 | 完成标准 |
 |---|---|---|---|---|---|
-| platform-01 | [Linux 阶段 0](quest-platform-01-linux-foundation/README.md) | 支线 | 功能 | 7 | 程序在 Linux 上运行时输出已加载的配置项名称；全部测试在 ASan 与 UBSan 下通过 |
+| platform-01 | [Linux 阶段 0](quest-platform-01-linux-foundation/README.md) | 支线 | 功能 | 6 | 程序在 Linux 上运行时输出已加载的配置项名称；全部测试在 ASan 与 UBSan 下通过 |
 | platform-02 | [事件循环和网络（Windows 与 Linux）](quest-platform-02-event-loop-network/README.md) | 支线·草案 | 功能 | 4 | Boost.Asio 的事件循环和 libcurl 三种用法的对比，在 Windows 上做完并验证（2.1、2.2），在 Linux 上做同样的事并记录差异（2.3、2.4） |
 | platform-03 | [libtorch（Linux）](quest-platform-03-libtorch-linux/README.md) | 支线·草案 | 功能 | 2 | 在 Linux 上用官方预编译包跑通 libtorch 的 hello tensor |
 | platform-04 | [内存映射（Linux）](quest-platform-04-mmap-linux/README.md) | 支线·草案 | 功能 | 1 | safetensors 的内存映射读取在 Linux 上通过测试，大文件与对齐都已验证 |
