@@ -3,6 +3,13 @@ table {
   font-size: 0.85em;
 }
 
+/* Cinder (Bootstrap 3) never wraps inline code, so a long `code` in a table cell makes the whole table wider
+   than the page. Let it wrap, at spaces and, when there is no space, anywhere. */
+table code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 /* Left sidebar with the chapters of the current phase (overrides/main.html). */
 .phase-sidebar {
   position: sticky;
