@@ -18,7 +18,7 @@ Linux 上多出一个问题：编译器不会只有一个。同一台机器上�
 - 两次试编译：用固定的编译器编译并运行一个用到 concepts、`std::span` 和协程的 C++20 小程序，再带 AddressSanitizer 和 UndefinedBehaviorSanitizer 编译运行一次，证明编译器不只是“存在”。
 - `tests/scripts/test-check-env.sh`：11 个用例，用假命令冒充各种缺失和版本不对的情况，不碰真实系统。
 
-本章不写构建文件，那是 platform-1.2。
+本章不装第三方库（下一章 platform-1.2 用 vcpkg 装），也不写构建文件（platform-1.3）。
 
 先看效果：在一台还没装 CMake 和 Ninja 的机器上跑一次，再按提示装好，再跑一次。
 
@@ -78,7 +78,7 @@ check-env: OK
 
 不用 `update-alternatives` 把 `g++` 指过去：那会改整个系统的默认，影响机器上别的项目，而且脚本通过靠的是改系统，不是编译器本身。
 
-选 16 的理由很直接：它是 sid 里最高的版本，也是这台机器已经装好的默认编译器，同时在 CUDA 13.4 之后的支持范围内。如果 platform-1.6 装的 CUDA 低于 13.4，就改成 15，多装一个 `g++-15`。GCC 16 很新，第三方库有可能出警告，这会在 platform-1.2 的 `-Werror` 和 platform-1.4 的 vcpkg 构建里暴露，到时退一档即可，只改这一处。
+选 16 的理由很直接：它是 sid 里最高的版本，也是这台机器已经装好的默认编译器，同时在 CUDA 13.4 之后的支持范围内。如果 platform-1.6 装的 CUDA 低于 13.4，就改成 15，多装一个 `g++-15`。GCC 16 很新，第三方库有可能出警告，这会在 platform-1.3 的 `-Werror` 和 platform-1.2 的 vcpkg 构建里暴露，到时退一档即可，只改这一处。
 
 ### 2.2 滚动发行与“装机当天”
 
@@ -101,7 +101,7 @@ glibc 是 2.43。它不是检查项，只是报告出来：后面预编译的 li
 `command -v g++-16` 能找到，不等于它能编出能跑的 C++20 程序，更不等于带上 sanitizer 也行。所以脚本在检查完各个工具之后，做两次很小的试编译：
 
 1. 编译并运行一个用到概念约束、`std::span` 和一个最小协程的程序，用 `-std=c++20 -Wall -Wextra -Werror`。程序最后检查结果，不对就返回非零，所以“编译通过但跑错了”也会被发现。协程用到的是本项目 Asio 部分要用的那一套语言特性。
-2. 同一个程序加 `-fsanitize=address,undefined` 再编译、再运行。后面 platform-1.3 要在这两个 sanitizer 下跑整个测试集，现在先确认它们能用。
+2. 同一个程序加 `-fsanitize=address,undefined` 再编译、再运行。后面 platform-1.4 要在这两个 sanitizer 下跑整个测试集，现在先确认它们能用。
 
 ### 2.4 脚本的约定
 
@@ -205,7 +205,7 @@ describe_cmake() {
 }
 ```
 
-CMake 的下限是 3.25，主次版本分开比，4.x 自然通过。注意这里只设下限：这台机器上的 CMake 是 4.4.5，比 3.25 新得多，项目的 `cmake_minimum_required` 在新版本下是否照常工作，要到 platform-1.2 配置时才能验证。
+CMake 的下限是 3.25，主次版本分开比，4.x 自然通过。注意这里只设下限：这台机器上的 CMake 是 4.4.5，比 3.25 新得多，项目的 `cmake_minimum_required` 在新版本下是否照常工作，要到 platform-1.3 配置时才能验证。
 
 ### 4.3 试编译
 
@@ -377,7 +377,7 @@ check-env tests: 11 passed, 0 failed
 
 ## 9. 练习
 
-1. 给脚本加上 `curl`、`zip`、`unzip`、`tar` 的检查（platform-1.4 的 vcpkg 自举要用）。每一样写一个测试用例：缺它时退出码为 1，安装建议里有对应的包名。
+1. 给脚本加一个 `--quiet` 选项：全部通过时只打印最后一行 `check-env: OK`，有缺失时照常打印全部。先写测试，再改脚本。
 2. 让 `GCC_MAJOR` 可以被环境变量覆盖：`GCC_MAJOR=15 scripts/check-env.sh` 检查 `g++-15`。先写测试，再改脚本。想一想：这会不会破坏“固定”的意思？
 3. 把 `ldd --version` 那行报告改成读 `getconf GNU_LIBC_VERSION`，两者在什么情况下结果会不同？
 4. 故意让试编译失败：把 `smoke.cpp` 里的一个括号删掉，运行脚本，看错误输出是否足够让人定位问题。你会怎么改进“失败时打印前五行”这个做法？
@@ -388,4 +388,4 @@ check-env tests: 11 passed, 0 failed
 
 ## 11. 下一章预告
 
-下一章 platform-1.2 在主线已拆分的构建文件基础上新增 `cmake/platform/linux.cmake`：C++20、`-Wall -Wextra -Werror`、`compile_commands.json`、sanitizer 选项，预设有 debug、release、asan 三个，编译器写成这一章固定下来的 `g++-16`。
+下一章 platform-1.2 在 Linux 上装 vcpkg：先把 vcpkg 自举要用的工具（git、curl、zip、unzip、tar）和 vcpkg 本身加进 `check-env.sh`，再让 vcpkg 用这一章固定下来的 `g++-16` 把主线清单里的几个库装出来，并和 Windows 上解析出的版本对比。构建文件（`cmake/platform/linux.cmake` 和预设）放在再下一章 platform-1.3。

@@ -1,6 +1,6 @@
-# platform-1.3 测试与 Sanitizer
+# platform-1.4 测试与 Sanitizer
 
-- 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/platform-01-linux-foundation`（支线不打 tag，用 `git log quest/platform-01-linux-foundation --grep="^chapter-platform-1.3"` 定位本章提交）
+- 状态：未开始 ｜ 类型：支线 ｜ 分支：`quest/platform-01-linux-foundation`（支线不打 tag，用 `git log quest/platform-01-linux-foundation --grep="^chapter-platform-1.4"` 定位本章提交）
 - 所属支线：[支线 platform-01：Linux 阶段 0](README.md)
 - 可开始于：主线 [0.5 DLL 集中管理与依赖检查](../../tutorial/phase-00-toolchain/0.5-dll-management.md)
 - 一句话目标：CTest + GTest，在 ASan 与 UBSan 预设下跑测试
@@ -15,7 +15,7 @@
 
 ## 3. 本章改动
 
-待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-platform-1.3-tests-sanitizers:` 开头，可用 `git show --stat` 查看。）
+待写。（列出本章提交新增/修改的文件；提交信息以 `chapter-platform-1.4-tests-sanitizers:` 开头，可用 `git show --stat` 查看。）
 
 ## 4. 关键代码讲解
 
