@@ -6,9 +6,8 @@
 
 #include <gtest/gtest.h>
 
-#include <stdlib.h>
-
 #include "config.h"
+#include "env_util.h"
 
 namespace {
 
@@ -98,20 +97,24 @@ TEST(ConfigPrint, NeverShowsAFullSecret) {
 }
 
 TEST(ConfigGet, EmptyVariableCountsAsUnset) {
-  _putenv_s("A_TEST_Z", "");  // an empty value removes the variable
+  SetEnv("A_TEST_Z", "");  // an empty value removes the variable
   EXPECT_FALSE(config::Get("A_TEST_Z").has_value());
 }
 
 TEST(ConfigGet, ReadsAVariable) {
-  _putenv_s("A_TEST_Z", "hello");
+  SetEnv("A_TEST_Z", "hello");
   EXPECT_EQ(config::Get("A_TEST_Z"), "hello");
-  _putenv_s("A_TEST_Z", "");
+  SetEnv("A_TEST_Z", "");
 }
 
 TEST(ConfigPaths, ExeDirectoryContainsThisTestProgram) {
   const std::filesystem::path dir = config::ExeDirectory();
   EXPECT_TRUE(std::filesystem::is_directory(dir));
+#if defined(_WIN32)
   EXPECT_TRUE(std::filesystem::exists(dir / "test_config.exe"));
+#else
+  EXPECT_TRUE(std::filesystem::exists(dir / "test_config"));
+#endif
 }
 
 TEST(ConfigPaths, CandidatesAreTheExeDirectoryThenTheWorkingDirectoryTomlBeforeIni) {

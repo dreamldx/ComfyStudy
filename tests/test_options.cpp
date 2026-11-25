@@ -7,9 +7,8 @@
 
 #include <gtest/gtest.h>
 
-#include <stdlib.h>
-
 #include "config.h"
+#include "env_util.h"
 #include "options.h"
 
 namespace {
@@ -43,14 +42,12 @@ class OptionsTest : public testing::Test {
   void SetUp() override {
     for (const config::Key& key : config::KnownKeys()) {
       saved_.emplace_back(key.env, config::Get(key.env));
-      _putenv_s(key.env.c_str(), "");
+      SetEnv(key.env.c_str(), "");
     }
   }
   void TearDown() override {
-    for (const auto& [name, value] : saved_) _putenv_s(name.c_str(), value.value_or("").c_str());
+    for (const auto& [name, value] : saved_) SetEnv(name.c_str(), value.value_or("").c_str());
   }
-
-  static void SetEnv(const char* name, const char* value) { _putenv_s(name, value); }
 
   // Runs Parse with no config-file candidates; the output goes to out_ and err_.
   options::Result Run(const std::vector<std::string>& args,

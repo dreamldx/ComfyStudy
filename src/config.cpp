@@ -61,7 +61,9 @@ std::optional<std::string> Get(std::string_view env_name) {
   value = buffer;
   free(buffer);
 #else
-#error "config::Get is not implemented for this platform on this branch"
+  const char* raw = getenv(std::string(env_name).c_str());
+  if (raw == nullptr) return std::nullopt;
+  value = raw;
 #endif
   if (value.empty()) return std::nullopt;
   return value;
@@ -98,7 +100,11 @@ std::filesystem::path ExeDirectory() {
   }
   return std::filesystem::path(buffer).parent_path();
 #else
-#error "config::ExeDirectory is not implemented for this platform on this branch"
+  // /proc/self/exe is a symbolic link to the running executable.
+  std::error_code error;
+  const std::filesystem::path exe = std::filesystem::read_symlink("/proc/self/exe", error);
+  if (error) return {};
+  return exe.parent_path();
 #endif
 }
 

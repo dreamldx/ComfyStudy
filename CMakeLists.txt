@@ -8,7 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Everything that depends on the operating system lives in cmake/platform/<system>.cmake: the
 # compiler options, how the third-party libraries are found, and sources and targets that exist on
-# that system only. This branch has windows.cmake only.
+# that system only. This branch has windows.cmake and linux.cmake.
 string(TOLOWER "${CMAKE_SYSTEM_NAME}" comfystudy_platform)
 set(comfystudy_platform_file "${CMAKE_SOURCE_DIR}/cmake/platform/${comfystudy_platform}.cmake")
 if(NOT EXISTS "${comfystudy_platform_file}")
