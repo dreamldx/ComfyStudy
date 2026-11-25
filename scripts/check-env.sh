@@ -2,13 +2,15 @@
 # Checks that the tools the project needs are present and usable on Linux.
 # Usage: scripts/check-env.sh [--no-smoke]
 #   --no-smoke  only look at the tools; skip the two small test compilations
-# Exit 0 only if every check passes; otherwise lists what is missing, suggests an apt command, and exits 1.
+# vcpkg is found through the environment variable VCPKG_ROOT ($VCPKG_ROOT/vcpkg), not through PATH.
+# Exit 0 only if every check passes; otherwise lists what is missing, suggests how to get it, and exits 1.
 # It only checks and prints a suggestion. It never installs anything and never changes the system.
 set -u
 
 # The compiler is pinned by its major version and always called by its versioned name (g++-N), never
 # through the g++ alias, so a distribution that moves its default compiler does not change what we use.
 # nvcc (chapter platform-1.5) must accept this major version as its host compiler.
+# The same number is in cmake/toolchains/linux-gcc.cmake; tests/scripts/test-check-env.sh checks that they agree.
 GCC_MAJOR=16
 CMAKE_MIN_MAJOR=3
 CMAKE_MIN_MINOR=25
@@ -110,6 +112,54 @@ check_tool pkg-config pkg-config describe_pkg_config
 check_tool git git describe_git
 check_tool ld binutils describe_ld
 
+# What vcpkg needs to bootstrap itself and to fetch and unpack the sources of the libraries.
+describe_first_line() { first_line "$("$1" --version 2>&1)"; }
+describe_path() { echo "$2"; }
+# curl --version lists every library it was built with on one line; keep the part before the first " (".
+describe_curl() { local line; line="$(first_line "$("$1" --version 2>&1)")"; echo "${line%% (*}"; }
+check_tool curl curl describe_curl
+check_tool zip zip describe_path
+check_tool unzip unzip describe_path
+check_tool tar tar describe_first_line
+
+# The openssl port (a dependency of curl on Linux) is built with make and a Perl that can load IPC::Cmd.
+describe_perl() {
+  if ! "$1" -e 'use IPC::Cmd;' > /dev/null 2>&1; then
+    echo "FAIL: the Perl module IPC::Cmd cannot be loaded (the openssl port needs it)"
+    return
+  fi
+  echo "$2"
+}
+check_tool make make describe_first_line
+check_tool perl perl describe_perl
+
+# vcpkg lives in $VCPKG_ROOT and is usually not on PATH.
+vcpkg_missing=0
+check_vcpkg() {
+  local program version
+  if [ -z "${VCPKG_ROOT:-}" ]; then
+    echo "MISSING vcpkg: VCPKG_ROOT is not set"
+    missing+=(vcpkg)
+    vcpkg_missing=1
+    return
+  fi
+  program="$VCPKG_ROOT/vcpkg"
+  if [ ! -x "$program" ]; then
+    echo "MISSING vcpkg: no executable at $program"
+    missing+=(vcpkg)
+    vcpkg_missing=1
+    return
+  fi
+  if ! version="$("$program" version 2>&1)"; then
+    echo "MISSING vcpkg: cannot run $program"
+    missing+=(vcpkg)
+    vcpkg_missing=1
+    return
+  fi
+  printf 'OK      vcpkg: %s\n' "$(first_line "$version")"
+}
+check_vcpkg
+
 # Not a check: the glibc version bounds which prebuilt libraries (libtorch, ONNX Runtime) can be used later.
 if command -v ldd > /dev/null 2>&1; then
   printf 'INFO    glibc: %s\n' "$(first_line "$(ldd --version 2>&1)")"
@@ -210,6 +260,19 @@ if [ "${#missing[@]}" -gt 0 ]; then
   echo "check-env: FAILED, missing: ${names// /, }"
   if [ "${#packages[@]}" -gt 0 ]; then
     echo "install: sudo apt install ${packages[*]}"
+  fi
+  if [ "$vcpkg_missing" -eq 1 ]; then
+    # Check vcpkg out at the baseline of the project's vcpkg.json, so its scripts and the ports are from the same time.
+    script_dir="${BASH_SOURCE[0]%/*}"
+    [ "$script_dir" = "${BASH_SOURCE[0]}" ] && script_dir=.
+    checkout=""
+    if [ -r "$script_dir/../vcpkg.json" ]; then
+      manifest="$(<"$script_dir/../vcpkg.json")"
+      if [[ "$manifest" =~ \"builtin-baseline\"[[:space:]]*:[[:space:]]*\"([0-9a-f]{40})\" ]]; then
+        checkout=" && git -C ~/vcpkg checkout ${BASH_REMATCH[1]}"
+      fi
+    fi
+    echo "install: git clone https://github.com/microsoft/vcpkg ~/vcpkg${checkout} && ~/vcpkg/bootstrap-vcpkg.sh -disableMetrics"
   fi
   exit 1
 fi
