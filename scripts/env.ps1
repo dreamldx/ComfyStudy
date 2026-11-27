@@ -2,9 +2,21 @@
 # Dot-source it:  . .\scripts\env.ps1
 # It locates Visual Studio (vswhere; fallback: $env:COMFYSTUDY_VS_PATH, then the default
 # install path), runs vcvars64.bat in a cmd child and imports the resulting variables.
+# It also sets VCPKG_ROOT to the vcpkg installed with scoop (scoop install vcpkg), whatever vcvars64.bat
+# set: the project uses that one and no other.
 # Safe to source more than once.
 
+function Select-Vcpkg {
+  $scoop = if ($env:SCOOP) { $env:SCOOP } else { Join-Path $env:USERPROFILE 'scoop' }
+  $root = Join-Path $scoop 'apps\vcpkg\current'
+  if (-not (Test-Path -LiteralPath (Join-Path $root 'vcpkg.exe'))) {
+    throw "vcpkg was not found at $root. Install it with: scoop install vcpkg"
+  }
+  $env:VCPKG_ROOT = $root
+}
+
 if ($env:VSCMD_VER -and (Get-Command cl -ErrorAction SilentlyContinue)) {
+  Select-Vcpkg
   if ($env:COMFYSTUDY_ENV_QUIET -ne '1') { Write-Host 'MSVC x64 environment is already active in this session.' }
   return
 }
@@ -56,8 +68,11 @@ if (-not (Get-Command cl -ErrorAction SilentlyContinue)) {
   throw 'cl.exe is still not resolvable after running vcvars64.bat.'
 }
 
+Select-Vcpkg
+
 if ($env:COMFYSTUDY_ENV_QUIET -ne '1') {
-  $banner = @(& cl 2>&1 | ForEach-Object { "$_" } | Where-Object { $_ -match 'Optimizing Compiler' }) | Select-Object -First 1
+  $banner =@(& cl 2>&1 | ForEach-Object { "$_" } | Where-Object { $_ -match 'Optimizing Compiler' }) | Select-Object -First 1
   Write-Host ('MSVC x64 environment ready: ' + "$banner".Trim())
+  Write-Host ('vcpkg: ' + $env:VCPKG_ROOT)
   Write-Host 'It applies to this PowerShell session only: run your cl/link/cmake commands here, in the same session.'
 }

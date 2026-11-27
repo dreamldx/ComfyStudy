@@ -51,6 +51,9 @@ Check-Tool 'git' { param($cmd) First-Line 'git' @('--version') }
 Check-Tool 'vcpkg' { param($cmd) $cmd.Source }
 Check-Tool 'powershell' { param($cmd) $cmd.Source }
 
+# Not a check: the vcpkg that builds the libraries (env.ps1 sets it to the one installed with scoop).
+Write-Host ('INFO    VCPKG_ROOT: ' + $(if ($env:VCPKG_ROOT) { $env:VCPKG_ROOT } else { '(not set: run env.ps1)' }))
+
 # -Gpu: the GPU as seen by the NVIDIA driver. nvidia-smi names the card and the driver; tools\gpu-probe
 # (configured on its own, so it does not need the project's dependencies) calls the driver the way a
 # program would. It needs the driver and cuda.lib from the CUDA toolkit, not nvcc.
