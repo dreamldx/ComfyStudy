@@ -10,6 +10,7 @@
 
 #include "agent_hook.h"
 #include "config.h"
+#include "context.h"
 #include "conversation.h"
 #include "provider.h"
 #include "tool.h"
@@ -48,6 +49,18 @@ extern const char* const kSteeringMarker;
 
 using Hooks = std::vector<std::shared_ptr<AgentHook>>;
 
+// How a Turn puts together what it sends (chapter 1.6, context.h). Without a plan the request is the
+// conversation as it is. With one, every Step builds its context from the conversation: the messages
+// before the user's message are the history, the user's message is the latest, and what came after it is
+// this Turn's own; the sections below are asked for at every Step, so what they say is what is true at that
+// Step (the Skills that are loaded, say). The conversation itself is not changed: the state is not stored.
+struct ContextPlan {
+  std::function<std::vector<Section>()> system;  // empty: Conversation::system alone, as one section
+  std::function<std::vector<Section>()> state;   // empty: no state
+  std::size_t budget_tokens = 0;                 // 0: no limit
+  TokenCounter count;                            // empty: EstimateTokens
+};
+
 // Runs one Turn. The last message of `conversation` is the user's message that starts it.
 //
 // Each Step offers the model the tools `tools->Definitions()` has at that moment (none when `tools`
@@ -63,6 +76,7 @@ using Hooks = std::vector<std::shared_ptr<AgentHook>>;
 boost::asio::awaitable<TurnOutcome> RunTurn(http::Transport& transport, const llm::Provider& provider,
                                             llm::Conversation& conversation, const llm::Options& options,
                                             ToolSet* tools, const Hooks& hooks, const TurnLimits& limits,
-                                            std::function<std::vector<std::string>()> take_new_messages);
+                                            std::function<std::vector<std::string>()> take_new_messages,
+                                            const ContextPlan* plan = nullptr);
 
 }  // namespace agent

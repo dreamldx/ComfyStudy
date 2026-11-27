@@ -79,6 +79,7 @@ Result Parse(const std::vector<std::string>& args,
   app.add_option("--prompt", result.options.prompt, "Ask the model this question, print the answer and exit");
   app.add_option("--system", result.options.system, "An instruction for the model, used with --prompt or --chat");
   app.add_flag("--chat", result.options.chat, "Talk with the model: one line, one answer, until /exit (try /help)");
+  app.add_flag("--show-context", result.options.show_context, "With --chat: before every request, show what it is made of and what each part takes (with -v: all of it)");
   app.add_flag("--tools", result.options.tools, "With --chat: let the model call the tools add and sleep");
 #if defined(_WIN32)
   app.add_flag("--dependency-check", result.options.dependency_check,

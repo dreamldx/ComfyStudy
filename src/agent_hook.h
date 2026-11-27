@@ -6,6 +6,7 @@
 #include <optional>
 #include <string>
 
+#include "context.h"
 #include "conversation.h"
 #include "tool.h"
 
@@ -38,6 +39,12 @@ struct TurnOutcome {
 
 struct TurnStarted {
   std::size_t messages;  // the length of the conversation, the user's message included
+};
+// The context of the request that is about to be sent (only when the Turn assembles its context, see
+// ContextPlan in agent.h).
+struct ContextBuilt {
+  int step;
+  const Context& context;
 };
 struct StepStarted {
   int step;  // 1, 2, ...
@@ -73,6 +80,7 @@ class AgentHook {
   virtual ~AgentHook() = default;
   virtual boost::asio::awaitable<void> OnTurnStarted(const TurnStarted&) { co_return; }
   virtual boost::asio::awaitable<void> OnStepStarted(const StepStarted&) { co_return; }
+  virtual boost::asio::awaitable<void> OnContextBuilt(const ContextBuilt&) { co_return; }
   virtual boost::asio::awaitable<void> OnReplyReceived(const ReplyReceived&) { co_return; }
   virtual boost::asio::awaitable<void> OnToolStarted(const ToolStarted&) { co_return; }
   virtual boost::asio::awaitable<void> OnToolFinished(const ToolFinished&) { co_return; }

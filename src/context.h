@@ -1,0 +1,99 @@
+#pragma once
+
+#include <cstddef>
+#include <functional>
+#include <stdexcept>
+#include <string>
+#include <vector>
+
+#include "config.h"
+#include "conversation.h"
+#include "provider.h"
+
+// Context assembly (chapter 1.6): what is sent to the model for one request is put together here, in one
+// place, from the parts that other code supplies, in a fixed order:
+//
+//   tools  ->  system prompt  ->  history  ->  state  ->  the user's latest message  ->  this turn so far
+//
+// Stable things come first and changing things last, so that the start of every request is the same as the
+// start of the one before (a prompt cache can only hit on a start that is the same). The state is not
+// written into the history: it is put in front of the user's latest message each time it is asked for.
+//
+// BuildContext is a pure function: no clock, no random numbers, no global state. The same inputs give the
+// same Context, byte for byte. The Context does not depend on the protocol; the provider turns the
+// Conversation and the tools into the JSON of its own protocol, as before.
+namespace agent {
+
+// A titled piece of text. In the system prompt and in the state, a section is written as "[title]" on a
+// line of its own and then the text; a section without a title is the text alone; a section without text
+// is left out.
+struct Section {
+  std::string title;
+  std::string text;
+};
+
+// How many tokens a text takes. The default is EstimateTokens; tests pass an exact one.
+using TokenCounter = std::function<std::size_t(const std::string&)>;
+
+struct ContextInputs {
+  std::vector<llm::ToolDefinition> tools;
+  std::vector<Section> system;        // joined with blank lines into Conversation::system
+  std::vector<llm::Message> history;  // the turns that are stored, before this one
+  std::vector<Section> state;         // changes from request to request: put in front of `latest`
+  llm::Message latest;                // the user's message that started this turn (role kUser)
+  std::vector<llm::Message> turn;     // what this turn has produced so far (the model's calls, the results)
+  std::size_t budget_tokens = 0;      // 0: no limit
+  TokenCounter count;                 // empty: EstimateTokens
+  std::size_t per_message_tokens = 4;  // what a message costs besides its content (roles, separators)
+};
+
+struct PartReport {
+  std::string name;  // "tools", "system: <title>", "history", "state", "input", "turn"
+  std::size_t items = 0;
+  std::size_t tokens = 0;
+};
+
+struct ContextReport {
+  std::vector<PartReport> parts;  // always in the order of the context
+  std::size_t total = 0;
+  std::size_t budget = 0;
+  std::size_t dropped_messages = 0;  // history messages left out to fit the budget
+  std::size_t dropped_turns = 0;
+};
+
+struct Context {
+  llm::Conversation conversation;
+  std::vector<llm::ToolDefinition> tools;
+  ContextReport report;
+};
+
+// Thrown when the context does not fit the budget even without any history. The message says how much
+// each part takes.
+class ContextError : public std::runtime_error {
+ public:
+  using std::runtime_error::runtime_error;
+};
+
+// Puts the parts together. When the total is over `budget_tokens`, the oldest turns of the history are
+// left out, a whole turn at a time (a turn is a user message with text and everything up to the next
+// one), so a tool call is never left without its result and the history still starts with a user
+// message. The system prompt, the state, the latest message and the turn are never cut. When something was
+// left out, the state says so ("earlier turns not shown: N"). Throws ContextError when it still does not fit.
+Context BuildContext(const ContextInputs& inputs);
+
+// A rough count, without a tokenizer: about one token for four ASCII bytes and one for every other
+// character. Good enough to see what takes the room and to keep a request from growing beyond the window; it
+// is not what the service will count.
+std::size_t EstimateTokens(const std::string& text);
+
+// The setting context_budget_tokens: a whole number of tokens, 0 (the default) for "what the window leaves" (DefaultBudget).
+// Throws llm::Error when the value is not a whole number or is negative.
+std::size_t ContextBudgetFromSettings(const config::Values& settings);
+
+// The token budget for the input: what the window leaves after the room for the answer, less a tenth.
+std::size_t DefaultBudget(const llm::Provider& provider, const llm::Options& options);
+
+// The context as text, in a fixed layout. For the golden files and `--show-context --verbose`.
+std::string FormatContext(const Context& context);
+
+}  // namespace agent

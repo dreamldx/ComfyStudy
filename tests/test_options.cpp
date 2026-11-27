@@ -248,6 +248,8 @@ TEST_F(OptionsTest, ChatFlag) {
 TEST_F(OptionsTest, ToolsFlag) {
   EXPECT_TRUE(Run({"--chat", "--tools"}).options.tools);
   EXPECT_FALSE(Run({"--chat"}).options.tools);
+  EXPECT_TRUE(Run({"--chat", "--show-context"}).options.show_context);
+  EXPECT_FALSE(Run({"--chat"}).options.show_context);
 }
 
 TEST_F(OptionsTest, ChatAndPromptTogetherAreAnError) {

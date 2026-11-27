@@ -57,6 +57,7 @@ class RecordingHook final : public agent::AgentHook {
 
   boost::asio::awaitable<void> OnTurnStarted(const agent::TurnStarted&) override { Add("TurnStarted"); co_return; }
   boost::asio::awaitable<void> OnStepStarted(const agent::StepStarted& e) override { Add("StepStarted(" + std::to_string(e.step) + ")"); co_return; }
+  boost::asio::awaitable<void> OnContextBuilt(const agent::ContextBuilt& e) override { Add("ContextBuilt(" + std::to_string(e.step) + ")"); co_return; }
   boost::asio::awaitable<void> OnReplyReceived(const agent::ReplyReceived& e) override {
     Add("ReplyReceived(" + std::to_string(e.step) + ")");
     co_return;
@@ -123,11 +124,11 @@ struct World {
 };
 
 agent::TurnOutcome Play(World& world, agent::TurnLimits limits = {}, std::function<std::vector<std::string>()> take = nullptr,
-                        agent::ToolSet* tools = nullptr) {
+                        agent::ToolSet* tools = nullptr, const agent::ContextPlan* plan = nullptr) {
   boost::asio::io_context io;
   auto outcome = boost::asio::co_spawn(io,
                                        agent::RunTurn(world.transport, world.provider, world.conversation, world.options,
-                                                      tools != nullptr ? tools : &world.tools, world.hooks, limits, std::move(take)),
+                                                      tools != nullptr ? tools : &world.tools, world.hooks, limits, std::move(take), plan),
                                        boost::asio::use_future);
   io.run();
   return outcome.get();
@@ -402,4 +403,100 @@ TEST(Turn, WithoutToolsNoToolsAreOfferedAndACallIsAnErrorResult) {
   Play(world);
   EXPECT_FALSE(RequestBody(world, 0).contains("tools"));
   EXPECT_EQ(RequestBody(world, 1)["messages"][2]["content"][0]["is_error"], true);
+}
+
+// --- Turns that assemble their context (chapter 1.6) ----------------------------------------------
+
+namespace {
+
+std::size_t Bytes(const std::string& text) { return text.size(); }
+
+agent::ContextPlan SimplePlan() {
+  agent::ContextPlan plan;
+  plan.system = [] { return std::vector<agent::Section>{{"", "Be brief."}, {"rules", "R"}}; };
+  plan.state = [] { return std::vector<agent::Section>{{"session state", "channel: cli"}}; };
+  return plan;
+}
+
+}  // namespace
+
+TEST(TurnContext, TheRequestHasTheSystemSectionsAndTheStateInFrontOfTheUsersMessage) {
+  World world({Ok(Said("hi"))}, "add things");
+  const agent::ContextPlan plan = SimplePlan();
+  EXPECT_EQ(Play(world, {}, nullptr, nullptr, &plan).reason, Reason::kDone);
+  const Json body = RequestBody(world, 0);
+  EXPECT_EQ(body["system"], "Be brief.\n\n[rules]\nR");
+  ASSERT_EQ(body["messages"][0]["content"].size(), 2u);
+  EXPECT_EQ(body["messages"][0]["content"][0]["text"], "[session state]\nchannel: cli");
+  EXPECT_EQ(body["messages"][0]["content"][1]["text"], "add things");
+}
+
+TEST(TurnContext, TheConversationKeepsTheMessageAsTheUserWroteItAndWithoutTheState) {
+  World world({Ok(Said("hi"))}, "add things");
+  const agent::ContextPlan plan = SimplePlan();
+  Play(world, {}, nullptr, nullptr, &plan);
+  ASSERT_EQ(world.conversation.messages.size(), 2u);
+  EXPECT_EQ(world.conversation.messages[0].blocks.size(), 1u);
+}
+
+TEST(TurnContext, TheSectionsAreAskedAtEveryStepSoAChangeShowsInTheNextRequest) {
+  World world({Ok(Asks({CallAdd("c1", 1, 2)})), Ok(Said("3"))}, "add things");
+  agent::ContextPlan plan = SimplePlan();
+  auto asked = std::make_shared<int>(0);
+  plan.state = [asked] { return std::vector<agent::Section>{{"session state", "asked " + std::to_string(++*asked)}}; };
+  EXPECT_EQ(Play(world, {}, nullptr, nullptr, &plan).reason, Reason::kDone);
+  EXPECT_EQ(RequestBody(world, 0)["messages"][0]["content"][0]["text"], "[session state]\nasked 1");
+  EXPECT_EQ(RequestBody(world, 1)["messages"][0]["content"][0]["text"], "[session state]\nasked 2");
+  EXPECT_EQ(RequestBody(world, 1)["messages"].size(), 3u);  // the question, the call, the result
+}
+
+TEST(TurnContext, WithoutSystemSectionsTheSystemPromptOfTheConversationIsUsed) {
+  World world({Ok(Said("hi"))}, "add things");
+  world.conversation.system = "From the conversation.";
+  agent::ContextPlan plan;
+  Play(world, {}, nullptr, nullptr, &plan);
+  EXPECT_EQ(RequestBody(world, 0)["system"], "From the conversation.");
+  EXPECT_EQ(RequestBody(world, 0)["messages"][0]["content"].size(), 1u);  // no state: nothing in front
+}
+
+TEST(TurnContext, ASmallBudgetLeavesTheOldTurnsOutOfTheRequestButNotOutOfTheConversation) {
+  World world({Ok(Said("hi"))}, "the new question");
+  world.conversation.messages.insert(world.conversation.messages.begin(),
+                                     {{llm::Role::kUser, {llm::TextBlock{std::string(200, 'a')}}}, {llm::Role::kAssistant, {llm::TextBlock{std::string(200, 'b')}}},
+                                      {llm::Role::kUser, {llm::TextBlock{std::string(200, 'c')}}}, {llm::Role::kAssistant, {llm::TextBlock{std::string(200, 'd')}}}});
+  std::size_t tools_bytes = 0;  // the tools take room too, and are not cut
+  for (const llm::ToolDefinition& tool : world.tools.Definitions()) {
+    tools_bytes += tool.name.size() + tool.description.size() + json::Dump(tool.parameters).size();
+  }
+  agent::ContextPlan plan;
+  plan.budget_tokens = tools_bytes + 700;  // room for one of the two old turns, not for both
+  plan.count = Bytes;
+  EXPECT_EQ(Play(world, {}, nullptr, nullptr, &plan).reason, Reason::kDone);
+  const Json body = RequestBody(world, 0);
+  ASSERT_EQ(body["messages"].size(), 3u);  // the second old turn and the question: the oldest turn is gone
+  EXPECT_EQ(world.conversation.messages.size(), 6u);  // all four old ones, the question and the answer
+}
+
+TEST(TurnContext, AContextThatCannotFitFailsTheTurnBeforeAnyRequestIsSent) {
+  World world({Ok(Said("hi"))}, std::string(300, 'q'));
+  agent::ContextPlan plan;
+  plan.budget_tokens = 50;
+  plan.count = Bytes;
+  const agent::TurnOutcome outcome = Play(world, {}, nullptr, nullptr, &plan);
+  EXPECT_EQ(outcome.reason, Reason::kFailed);
+  EXPECT_NE(outcome.error.find("budget of 50"), std::string::npos) << outcome.error;
+  EXPECT_TRUE(world.transport.seen().empty());
+  EXPECT_TRUE(world.conversation.messages.empty());  // the question went too
+}
+
+TEST(TurnContext, TheHooksAreToldAboutEveryContextAndOnlyWhenThereIsAPlan) {
+  World with_plan({Ok(Asks({CallAdd("c1", 1, 2)})), Ok(Said("3"))});
+  const agent::ContextPlan plan = SimplePlan();
+  Play(with_plan, {}, nullptr, nullptr, &plan);
+  EXPECT_TRUE(Has(*with_plan.log, "ContextBuilt(1)"));
+  EXPECT_TRUE(Has(*with_plan.log, "ContextBuilt(2)"));
+
+  World without({Ok(Said("hi"))});
+  Play(without);
+  EXPECT_FALSE(Has(*without.log, "ContextBuilt(1)"));
 }

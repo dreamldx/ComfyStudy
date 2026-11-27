@@ -23,6 +23,10 @@ discord_token =
 ; With --chat --tools: the directory with the Skills (one subdirectory with a SKILL.md for each). A relative
 ; path starts at the directory the program is run from.
 ; skills_dir = skills
+; How many tokens one request may take at most (an estimate, see --show-context). 0: what the window of the
+; model leaves after the room for the answer, less a tenth. The oldest turns of the history are left out when it
+; does not fit; they stay in the history.
+; context_budget_tokens = 0
 
 ; OpenAI, or any OpenAI-compatible server.
 ; Which of OpenAI's two request formats to use: chat (Chat Completions, the default) or responses.

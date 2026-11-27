@@ -70,6 +70,7 @@ TEST(ConfigKnownKeys, TheKeysInOrderWithTheRightOnesSecret) {
       {"tool_timeout_ms", "TOOL_TIMEOUT_MS", "30000", false},
       {"tool_result_max_bytes", "TOOL_RESULT_MAX_BYTES", "16384", false},
       {"skills_dir", "SKILLS_DIR", "skills", false},
+      {"context_budget_tokens", "CONTEXT_BUDGET_TOKENS", "0", false},
       {"openai_api", "OPENAI_API", "chat", false},
       {"openai_model", "OPENAI_MODEL", "", false},
       {"openai_api_key", "OPENAI_API_KEY", "", true},

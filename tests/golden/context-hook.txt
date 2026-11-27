@@ -1,0 +1,8 @@
+[context] step 1: about 47 tokens (budget 1000)
+  tools                     1 items,     32 tokens
+  system: instructions      1 items,      3 tokens
+  history                   2 items,      7 tokens
+  state                     0 items,      0 tokens
+  input                     1 items,      5 tokens
+  turn                      0 items,      0 tokens
+[context] the service counted 321 input tokens (about 47 were estimated)

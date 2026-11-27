@@ -23,12 +23,12 @@ bool IsCancellation(const boost::system::system_error& e) { return e.code() == b
 
 // Tells every hook about one thing, in the order they were registered. A hook that fails is logged and
 // the others go on; a cancellation is not a failure of the hook and goes up.
-template <class Context>
-boost::asio::awaitable<void> Notify(const Hooks& hooks, boost::asio::awaitable<void> (AgentHook::*method)(const Context&),
-                                    const Context& context) {
+template <class Event>
+boost::asio::awaitable<void> Notify(const Hooks& hooks, boost::asio::awaitable<void> (AgentHook::*method)(const Event&),
+                                    const Event& event) {
   for (const std::shared_ptr<AgentHook>& hook : hooks) {
     try {
-      co_await ((*hook).*method)(context);
+      co_await ((*hook).*method)(event);
     } catch (const boost::system::system_error& e) {
       if (IsCancellation(e)) throw;
       spdlog::warn("a hook failed: {}", e.what());
@@ -77,8 +77,25 @@ struct Run {
   const Hooks& hooks;
   const TurnLimits& limits;
   const std::function<std::vector<std::string>()>& take_new_messages;
+  const ContextPlan* plan;
+  std::size_t turn_start;  // the index of the user's message that started the Turn
   TurnOutcome& outcome;
 };
+
+// The context of this Step, built from the conversation as it is now.
+Context BuildStepContext(const Run& run, const llm::Options& options) {
+  const llm::Conversation& conversation = run.conversation;
+  ContextInputs inputs;
+  inputs.tools = options.tools;
+  inputs.system = run.plan->system ? run.plan->system() : std::vector<Section>{{"", conversation.system}};
+  if (run.plan->state) inputs.state = run.plan->state();
+  inputs.history.assign(conversation.messages.begin(), conversation.messages.begin() + static_cast<std::ptrdiff_t>(run.turn_start));
+  inputs.latest = conversation.messages[run.turn_start];
+  inputs.turn.assign(conversation.messages.begin() + static_cast<std::ptrdiff_t>(run.turn_start) + 1, conversation.messages.end());
+  inputs.budget_tokens = run.plan->budget_tokens;
+  inputs.count = run.plan->count;
+  return BuildContext(inputs);
+}
 
 // The Steps of a Turn, one after the other. Writes how it ended into run.outcome. Only a cancellation
 // leaves it as an exception.
@@ -99,7 +116,15 @@ boost::asio::awaitable<void> RunSteps(const Run& run) {
 
       llm::Options options = run.options;
       if (run.tools != nullptr) options.tools = run.tools->Definitions();  // asked at every Step
-      const llm::Reply reply = co_await CallModel(run.transport, run.provider, run.conversation, options);
+      llm::Reply reply;
+      if (run.plan != nullptr) {
+        const Context context = BuildStepContext(run, options);
+        co_await Notify(run.hooks, &AgentHook::OnContextBuilt, ContextBuilt{step, context});
+        options.tools = context.tools;
+        reply = co_await CallModel(run.transport, run.provider, context.conversation, options);
+      } else {
+        reply = co_await CallModel(run.transport, run.provider, run.conversation, options);
+      }
       AddTokens(outcome.input_tokens, reply.input_tokens);
       AddTokens(outcome.output_tokens, reply.output_tokens);
       co_await Notify(run.hooks, &AgentHook::OnReplyReceived, ReplyReceived{step, reply});
@@ -166,14 +191,15 @@ TurnLimits LimitsFromSettings(const config::Values& settings) {
 boost::asio::awaitable<TurnOutcome> RunTurn(http::Transport& transport, const llm::Provider& provider,
                                             llm::Conversation& conversation, const llm::Options& options,
                                             ToolSet* tools, const Hooks& hooks, const TurnLimits& limits,
-                                            std::function<std::vector<std::string>()> take_new_messages) {
+                                            std::function<std::vector<std::string>()> take_new_messages,
+                                            const ContextPlan* plan) {
   if (conversation.messages.empty()) {
     throw std::invalid_argument("RunTurn needs the user's message as the last message of the conversation");
   }
   const std::size_t rollback_to = conversation.messages.size() - 1;  // the user's message goes too if the Turn fails
 
   TurnOutcome outcome;
-  const Run run{transport, provider, conversation, options, tools, hooks, limits, take_new_messages, outcome};
+  const Run run{transport, provider, conversation, options, tools, hooks, limits, take_new_messages, plan, rollback_to, outcome};
   bool cancelled = false;
   try {
     co_await Notify(hooks, &AgentHook::OnTurnStarted, TurnStarted{conversation.messages.size()});

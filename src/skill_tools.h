@@ -20,8 +20,9 @@ namespace agent {
 // unloading takes them out again. A tool that several loaded Skills name is added when the first of them is
 // loaded and taken out when the last of them is unloaded (a count for each tool name).
 //
-// The model chooses from the list of Skills in the description of load_skill: the name and the task of each,
-// not the tools (it learns those when the Skill is loaded).
+// The model chooses from the list of Skills (Catalog(), which goes in the system prompt): the name and the
+// task of each, not the tools (it learns those when the Skill is loaded). The descriptions of the two tools
+// never change, so that loading a Skill changes the tools and nothing else.
 //
 // SkillTools is also a hook: a Turn that does not end in an answer is forgotten by the loop, and so are the
 // Skills that were loaded during it; otherwise the model would not remember asking for the tools that are
@@ -34,6 +35,10 @@ class SkillTools final : public ToolSource, public AgentHook {
   // `runtime` is the one this source is added to; it has to be there for as long as this one is. Throws
   // std::invalid_argument when a Skill names a tool that `library` does not have.
   SkillTools(SkillCatalog catalog, std::shared_ptr<NativeTools> library, ToolRuntime& runtime);
+
+  // The list of the Skills for the model: one line for each, the name and what it is for (no tool names, no
+  // word about what is loaded: that changes, and goes in the state). It is meant for the system prompt.
+  std::string Catalog() const;
 
   // The Skills that are loaded, in the order they were loaded.
   const std::vector<std::string>& Loaded() const { return loaded_; }

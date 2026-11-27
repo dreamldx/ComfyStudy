@@ -118,8 +118,7 @@ TEST(SkillTools, AtTheStartOnlyTheTwoToolsOfTheMechanismAreOffered) {
 
 TEST(SkillTools, TheListOfSkillsHasTheNamesAndTheTasksButNoToolNames) {
   World world;
-  const auto definitions = world.runtime.Definitions();
-  const std::string& text = definitions.at(0).description;
+  const std::string text = world.skills->Catalog();
   EXPECT_TRUE(Contains(text, "- calc: exact arithmetic")) << text;
   EXPECT_TRUE(Contains(text, "- timer: waiting for a while")) << text;
   EXPECT_TRUE(Contains(text, "- power: switching the machine off")) << text;
@@ -148,12 +147,15 @@ TEST(SkillTools, LoadingASkillGivesItsInstructionsAndTheToolsAppearInTheRuntime)
   EXPECT_EQ(Joined(world.skills->Loaded()), "calc");
 }
 
-TEST(SkillTools, TheListOfSkillsMarksTheLoadedOnes) {
+TEST(SkillTools, TheDescriptionsOfTheTwoToolsDoNotListTheSkillsAndDoNotChangeWhenOneIsLoaded) {
   World world;
+  const auto before = world.runtime.Definitions();
+  EXPECT_FALSE(Contains(before.at(0).description, "calc")) << before.at(0).description;
   world.Load("timer");
-  const std::string text = world.runtime.Definitions().at(0).description;
-  EXPECT_TRUE(Contains(text, "- timer: waiting for a while (loaded)")) << text;
-  EXPECT_FALSE(Contains(text, "- calc: exact arithmetic (loaded)")) << text;
+  const auto after = world.runtime.Definitions();
+  EXPECT_EQ(after.at(0).description, before.at(0).description);
+  EXPECT_EQ(after.at(1).description, before.at(1).description);
+  EXPECT_FALSE(Contains(world.skills->Catalog(), "(loaded)"));  // what is loaded is told in the state
 }
 
 TEST(SkillTools, LoadingASkillThatIsLoadedIsAnErrorAndChangesNothing) {
@@ -295,4 +297,43 @@ TEST(SkillTools, ASkillLoadedInTheMiddleOfATurnIsThereInTheNextRequestOfTheSameT
   EXPECT_TRUE(Contains(seen[1].body, "Use add for sums."));
   // and the add call really ran
   EXPECT_TRUE(Contains(seen[2].body, "result of add"));
+}
+
+TEST(SkillTools, TheStateOfTheNextStepTellsWhichSkillsAreLoadedWhileTheToolsBlockOfTheFirstStaysAsItWas) {
+  World world;
+  llm::Provider provider{"anthropic", llm::Protocol::kAnthropic, llm::Endpoint{"https://a.test", "key"}, "m", {true, 1000, 100000}};
+  auto reply = [](std::vector<llm::Block> blocks, const char* stop) {
+    llm::Reply r;
+    r.message.role = llm::Role::kAssistant;
+    r.message.blocks = std::move(blocks);
+    r.stop_reason = stop;
+    return http::Response{200, AnthropicBody(r)};
+  };
+  ScriptedTransport transport({reply({llm::ToolCallBlock{"c1", "load_skill", Json{{"name", "calc"}}, "", ""}}, "tool_use"),
+                               reply({llm::TextBlock{"done"}}, "end_turn")});
+  llm::Conversation conversation;
+  conversation.messages.push_back({llm::Role::kUser, {llm::TextBlock{"add things"}}});
+  agent::ContextPlan plan;
+  plan.system = [&world] { return std::vector<agent::Section>{{"skills", world.skills->Catalog()}}; };
+  plan.state = [&world] {
+    return std::vector<agent::Section>{{"session state", "loaded skills: " + Joined(world.skills->Loaded())}};
+  };
+  const agent::Hooks hooks = {world.skills};
+  boost::asio::io_context io;
+  auto outcome = boost::asio::co_spawn(
+      io, agent::RunTurn(transport, provider, conversation, llm::Options{}, &world.runtime, hooks, agent::TurnLimits{}, nullptr, &plan),
+      boost::asio::use_future);
+  io.run();
+  EXPECT_EQ(outcome.get().reason, agent::TurnOutcome::Reason::kDone);
+
+  const auto seen = transport.seen();
+  ASSERT_EQ(seen.size(), 2u);
+  const Json first = json::Parse(seen[0].body);
+  const Json second = json::Parse(seen[1].body);
+  EXPECT_TRUE(Contains(first["system"].get<std::string>(), "- calc: exact arithmetic"));
+  EXPECT_EQ(first["system"], second["system"]);  // the list of the Skills is the same at every Step
+  EXPECT_TRUE(Contains(first["messages"][0]["content"][0]["text"].get<std::string>(), "loaded skills: "));
+  EXPECT_FALSE(Contains(first["messages"][0]["content"][0]["text"].get<std::string>(), "calc"));
+  EXPECT_TRUE(Contains(second["messages"][0]["content"][0]["text"].get<std::string>(), "loaded skills: calc"));
+  EXPECT_EQ(conversation.messages[0].blocks.size(), 1u);  // the stored message has no state in it
 }

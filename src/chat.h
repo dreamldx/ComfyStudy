@@ -1,22 +1,38 @@
 #pragma once
 
+#include <functional>
 #include <iosfwd>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include "agent.h"
+#include "context.h"
 #include "conversation.h"
+#include "history.h"
 #include "provider.h"
 #include "transport.h"
 
 namespace llm {
 
+// What the chat adds to each request besides the history (chapter 1.6, context.h). The defaults add nothing:
+// the instruction is the only system text, there is no state, and the window of the provider sets the limit.
+struct ContextSettings {
+  std::vector<agent::Section> system_extra;            // after the instruction: the rules, the list of Skills
+  std::function<std::vector<agent::Section>()> state;  // asked at every Step
+  std::size_t budget_tokens = 0;                       // 0: what the provider's window leaves (DefaultBudget)
+  agent::TokenCounter count;                           // empty: EstimateTokens
+  std::shared_ptr<agent::History> history;             // empty: in memory
+  std::string channel = "cli";
+};
+
 // A conversation on the command line: reads a line, runs a Turn for it (see agent.h) with the current
-// provider, and goes on until the input ends or the line "/exit". The history lives in memory only.
+// provider, and goes on until the input ends or the line "/exit". The history is a History (in memory unless
+// `context` brings another), loaded before every Turn and added to after a Turn that ended with an answer.
 // Lines that start with "/" are commands, not questions:
 //   /use <name>   switch to another provider (the history stays; reasoning blocks that another
 //                 protocol left in it are not sent, and /use says how many there are)
-//   /reset        forget the history (and tell `tools` to start over: the Skills that were loaded are unloaded)
+//   /reset        forget the history of the channel (and tell `tools` to start over: the Skills that were loaded are unloaded)
 //   /exit         end the chat
 //   /help         list the commands
 // Blank lines are ignored. What a Turn shows is printed by a ConsoleHook: answers and tool lines on
@@ -29,7 +45,8 @@ namespace llm {
 // is not the name of one of `providers`.
 void RunChat(http::Transport& transport, const std::vector<Provider>& providers, const std::string& start_name,
              const Options& options, const std::string& system, agent::ToolSet* tools, const agent::TurnLimits& limits,
-             std::istream& in, std::ostream& out, std::ostream& err, const agent::Hooks& extra_hooks = {});
+             std::istream& in, std::ostream& out, std::ostream& err, const agent::Hooks& extra_hooks = {},
+             const ContextSettings& context = {});
 
 // On Windows, makes a console read and write UTF-8, so that Chinese text arrives as valid UTF-8.
 // Does nothing when the input is redirected, and on other systems.

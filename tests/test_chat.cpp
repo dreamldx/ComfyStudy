@@ -305,3 +305,83 @@ TEST(Chat, TheExtraHooksAreToldAboutEveryTurn) {
   llm::RunChat(transport, {Anthropic()}, "anthropic", {}, "", nullptr, {}, in, out, err, {hook});
   EXPECT_EQ(hook->started, 2);
 }
+
+namespace {
+
+// RunChat with a history and context settings of the test's own; what the service was sent comes back.
+Transcript ChatWithContext(std::vector<http::Response> script, const std::string& input, const llm::ContextSettings& context,
+                           const std::string& system = "") {
+  ScriptedTransport transport(std::move(script));
+  std::istringstream in(input);
+  std::ostringstream out;
+  std::ostringstream err;
+  llm::RunChat(transport, {Anthropic()}, "anthropic", {}, system, nullptr, {}, in, out, err, {}, context);
+  return {out.str(), err.str(), transport.seen()};
+}
+
+std::size_t Bytes(const std::string& text) { return text.size(); }
+
+llm::Message UserSays(const std::string& text) { return {llm::Role::kUser, {llm::TextBlock{text}}}; }
+llm::Message AssistantSays(const std::string& text) { return {llm::Role::kAssistant, {llm::TextBlock{text}}}; }
+
+}  // namespace
+
+TEST(ChatContext, OnlyATurnThatEndedWithAnAnswerGoesIntoTheHistory) {
+  llm::ContextSettings context;
+  context.history = std::make_shared<agent::MemoryHistory>();
+  ChatWithContext({Ok(Answer("Hi")), {500, "oops"}, Ok(Answer("Bye"))}, "hello\nagain\nonce more\n", context);
+  const auto stored = context.history->Load("cli");
+  ASSERT_EQ(stored.size(), 4u);  // hello, Hi, once more, Bye: the turn that failed left nothing
+  EXPECT_EQ(std::get<llm::TextBlock>(stored[2].blocks[0]).text, "once more");
+}
+
+TEST(ChatContext, EveryTurnStartsFromTheHistoryThatIsStored) {
+  llm::ContextSettings context;
+  context.history = std::make_shared<agent::MemoryHistory>();
+  context.history->Append("cli", {UserSays("earlier question"), AssistantSays("earlier answer")});
+  const Transcript run = ChatWithContext({Ok(Answer("Hi"))}, "hello\n", context);
+  const Json body = json::Parse(run.seen.at(0).body);
+  ASSERT_EQ(body["messages"].size(), 3u);
+  EXPECT_EQ(body["messages"][0]["content"][0]["text"], "earlier question");
+}
+
+TEST(ChatContext, ResetEmptiesTheHistoryOfTheChannel) {
+  llm::ContextSettings context;
+  context.history = std::make_shared<agent::MemoryHistory>();
+  context.history->Append("other", {UserSays("not ours")});
+  const Transcript run = ChatWithContext({Ok(Answer("Hi")), Ok(Answer("Bye"))}, "hello\n/reset\nagain\n", context);
+  EXPECT_EQ(json::Parse(run.seen.at(1).body)["messages"].size(), 1u);
+  EXPECT_EQ(context.history->Load("cli").size(), 2u);
+  EXPECT_EQ(context.history->Load("other").size(), 1u);
+}
+
+TEST(ChatContext, TheSystemSectionsAndTheStateAreInTheRequest) {
+  llm::ContextSettings context;
+  context.system_extra = {{"rules", "Be careful."}, {"skills", "- calc: sums"}};
+  context.state = [] { return std::vector<agent::Section>{{"session state", "loaded skills: none"}}; };
+  const Transcript run = ChatWithContext({Ok(Answer("Hi"))}, "hello\n", context, "Be brief.");
+  const Json body = json::Parse(run.seen.at(0).body);
+  EXPECT_EQ(body["system"], "Be brief.\n\n[rules]\nBe careful.\n\n[skills]\n- calc: sums");
+  EXPECT_EQ(body["messages"][0]["content"][0]["text"], "[session state]\nloaded skills: none");
+  EXPECT_EQ(body["messages"][0]["content"][1]["text"], "hello");
+}
+
+TEST(ChatContext, TheBudgetLeavesTheOldestTurnsOutOfTheRequestButNotOutOfTheHistory) {
+  llm::ContextSettings context;
+  context.history = std::make_shared<agent::MemoryHistory>();
+  context.history->Append("cli", {UserSays(std::string(300, 'a')), AssistantSays(std::string(300, 'b')), UserSays(std::string(300, 'c')),
+                                  AssistantSays(std::string(300, 'd'))});
+  context.budget_tokens = 800;
+  context.count = Bytes;
+  const Transcript run = ChatWithContext({Ok(Answer("Hi"))}, "hello\n", context);
+  EXPECT_EQ(json::Parse(run.seen.at(0).body)["messages"].size(), 3u);  // the second old turn, and the question
+  EXPECT_EQ(context.history->Load("cli").size(), 6u);                  // nothing was forgotten
+}
+
+TEST(ChatContext, TheBudgetCanComeFromTheWindowOfTheProviderWhenNoneIsSet) {
+  llm::ContextSettings context;
+  context.history = std::make_shared<agent::MemoryHistory>();
+  context.history->Append("cli", {UserSays(std::string(300, 'a')), AssistantSays(std::string(300, 'b'))});
+  const Transcript run = ChatWithContext({Ok(Answer("Hi"))}, "hello\n", context);
+  EXPECT_EQ(json::Parse(run.seen.at(0).body)["messages"].size(), 3u);  // a window of 100000 tokens leaves room for all
+}

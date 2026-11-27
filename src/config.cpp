@@ -40,6 +40,7 @@ const std::vector<Key>& KnownKeys() {
         {"tool_timeout_ms", "30000"},
         {"tool_result_max_bytes", "16384"},
         {"skills_dir", "skills"},
+        {"context_budget_tokens", "0"},
         {"openai_api", "chat"},
         {"openai_model", ""},
         {"openai_api_key", ""},

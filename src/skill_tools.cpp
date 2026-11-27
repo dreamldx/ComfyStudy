@@ -105,13 +105,15 @@ void SkillTools::Restore(const std::vector<std::string>& wanted) {
   }
 }
 
-std::vector<ToolSpec> SkillTools::Specs() const {
+std::string SkillTools::Catalog() const {
   std::string list;
+  for (const SkillInfo& skill : catalog_.skills) list += (list.empty() ? "" : "\n") + std::string("- ") + skill.name + ": " + skill.description;
+  return list;
+}
+
+std::vector<ToolSpec> SkillTools::Specs() const {
   json::Value names = json::Array();
-  for (const SkillInfo& skill : catalog_.skills) {
-    list += "\n- " + skill.name + ": " + skill.description + (IsLoaded(skill.name) ? " (loaded)" : "");
-    json::Push(names, skill.name);
-  }
+  for (const SkillInfo& skill : catalog_.skills) json::Push(names, skill.name);
   const auto name_schema = [&](const char* what) {
     return json::Value{{"type", "object"},
                        {"properties", {{"name", {{"type", "string"}, {"description", what}, {"enum", names}}}}},
@@ -123,7 +125,7 @@ std::vector<ToolSpec> SkillTools::Specs() const {
   load.name = kLoad;
   load.description =
       "Loads a Skill: you get its instructions, and the tools it brings can be used from the next step on. Load a Skill when the "
-      "task needs it. The Skills:" + list;
+      "task needs it; the Skills and what they are for are listed in the instructions.";
   load.parameters = name_schema("the Skill to load");
   load.effect = Effect::kSideEffect;
 
