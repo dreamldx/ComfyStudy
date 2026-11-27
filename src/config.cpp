@@ -39,6 +39,7 @@ const std::vector<Key>& KnownKeys() {
         {"agent_turn_timeout_ms", "300000"},
         {"tool_timeout_ms", "30000"},
         {"tool_result_max_bytes", "16384"},
+        {"skills_dir", "skills"},
         {"openai_api", "chat"},
         {"openai_model", ""},
         {"openai_api_key", ""},

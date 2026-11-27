@@ -266,3 +266,42 @@ TEST(Chat, CtrlCStopsTheRunningTurnAndTheChatGoesOn) {
   ASSERT_EQ(run.seen.size(), 2u);
   EXPECT_EQ(json::Parse(run.seen[1].body)["messages"].size(), 1u);
 }
+
+namespace {
+
+// Tools that only count how often the chat told them to start over.
+class CountingTools final : public agent::ToolSet {
+ public:
+  std::vector<llm::ToolDefinition> Definitions() const override { return {}; }
+  boost::asio::awaitable<agent::ToolResult> Run(const llm::ToolCallBlock&) override { co_return agent::ToolResult{"", false}; }
+  void StartOver() override { ++starts; }
+  int starts = 0;
+};
+
+class CountingHook final : public agent::AgentHook {
+ public:
+  boost::asio::awaitable<void> OnTurnStarted(const agent::TurnStarted&) override {
+    ++started;
+    co_return;
+  }
+  int started = 0;
+};
+
+}  // namespace
+
+TEST(Chat, ResetTellsTheToolsToStartOver) {
+  CountingTools tools;
+  const Transcript run = Chat({Ok(Answer("Hi"))}, {Anthropic()}, "anthropic", "hello\n/reset\n/exit\n", {}, "", &tools);
+  EXPECT_EQ(tools.starts, 1);
+  EXPECT_TRUE(Contains(run.out, "history cleared"));
+}
+
+TEST(Chat, TheExtraHooksAreToldAboutEveryTurn) {
+  const auto hook = std::make_shared<CountingHook>();
+  ScriptedTransport transport({Ok(Answer("Hi")), Ok(Answer("Bye"))});
+  std::istringstream in("hello\nagain\n");
+  std::ostringstream out;
+  std::ostringstream err;
+  llm::RunChat(transport, {Anthropic()}, "anthropic", {}, "", nullptr, {}, in, out, err, {hook});
+  EXPECT_EQ(hook->started, 2);
+}

@@ -34,7 +34,7 @@ const Provider* Find(const std::vector<Provider>& providers, const std::string& 
 
 void RunChat(http::Transport& transport, const std::vector<Provider>& providers, const std::string& start_name,
              const Options& options, const std::string& system, agent::ToolSet* tools, const agent::TurnLimits& limits,
-             std::istream& in, std::ostream& out, std::ostream& err) {
+             std::istream& in, std::ostream& out, std::ostream& err, const agent::Hooks& extra_hooks) {
   const Provider* current = Find(providers, start_name);
   if (current == nullptr) {
     throw Error("there is no provider called \"" + start_name + "\"; available: " + Names(providers));
@@ -43,7 +43,8 @@ void RunChat(http::Transport& transport, const std::vector<Provider>& providers,
   Conversation conversation;
   conversation.system = system;
   boost::asio::io_context io;
-  const agent::Hooks hooks = {std::make_shared<agent::ConsoleHook>(out, err, limits)};
+  agent::Hooks hooks = {std::make_shared<agent::ConsoleHook>(out, err, limits)};
+  hooks.insert(hooks.end(), extra_hooks.begin(), extra_hooks.end());
 
   std::string line;
   while (out << "> " << std::flush, std::getline(in, line)) {
@@ -57,6 +58,7 @@ void RunChat(http::Transport& transport, const std::vector<Provider>& providers,
       if (command == "/exit") break;
       if (command == "/reset") {
         conversation.messages.clear();
+        if (tools != nullptr) tools->StartOver();
         out << "history cleared\n";
       } else if (command == "/help") {
         out << "/use <name>  switch to another provider (" << Names(providers) << ")\n"

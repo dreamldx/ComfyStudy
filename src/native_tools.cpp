@@ -1,5 +1,6 @@
 #include "native_tools.h"
 
+#include <algorithm>
 #include <charconv>
 #include <chrono>
 #include <cstdint>
@@ -12,6 +13,24 @@ std::vector<ToolSpec> NativeTools::Specs() const {
   std::vector<ToolSpec> specs;
   for (const Entry& entry : entries_) specs.push_back(entry.spec);
   return specs;
+}
+
+std::shared_ptr<NativeTools> NativeTools::Subset(const std::vector<std::string>& names) const {
+  auto subset = std::make_shared<NativeTools>();
+  for (const Entry& entry : entries_) {
+    if (std::find(names.begin(), names.end(), entry.spec.name) != names.end()) subset->entries_.push_back(entry);
+  }
+  return subset;
+}
+
+bool NativeTools::Has(const std::string& name) const {
+  return std::any_of(entries_.begin(), entries_.end(), [&](const Entry& entry) { return entry.spec.name == name; });
+}
+
+std::vector<std::string> NativeTools::Names() const {
+  std::vector<std::string> names;
+  for (const Entry& entry : entries_) names.push_back(entry.spec.name);
+  return names;
 }
 
 boost::asio::awaitable<ToolResult> NativeTools::Call(const std::string& name, const json::Value& arguments) {

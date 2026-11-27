@@ -123,6 +123,18 @@ void ToolRuntime::AddSource(std::shared_ptr<ToolSource> source) {
   sources_.push_back(std::move(source));
 }
 
+bool ToolRuntime::RemoveSource(const std::shared_ptr<ToolSource>& source) {
+  const auto found = std::find(sources_.begin(), sources_.end(), source);
+  if (found == sources_.end()) return false;
+  sources_.erase(found);
+  return true;
+}
+
+void ToolRuntime::StartOver() {
+  const std::vector<std::shared_ptr<ToolSource>> sources = sources_;  // a source may add or remove sources
+  for (const std::shared_ptr<ToolSource>& source : sources) source->StartOver();
+}
+
 std::optional<ToolRuntime::Found> ToolRuntime::Find(const std::string& name) const {
   for (const std::shared_ptr<ToolSource>& source : sources_) {
     for (ToolSpec& spec : source->Specs()) {

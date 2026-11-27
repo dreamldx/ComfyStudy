@@ -2,6 +2,8 @@
 
 #include <filesystem>
 #include <iostream>
+#include <memory>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -11,6 +13,8 @@
 #include "agent.h"
 #include "chat.h"
 #include "native_tools.h"
+#include "skill.h"
+#include "skill_tools.h"
 #include "tool.h"
 #include "tool_runtime.h"
 #include "config.h"
@@ -67,15 +71,31 @@ int main(int argc, char** argv) {
       const std::string start = llm::DefaultProviderName(values);
       llm::MakeProvider(values, start);  // throws and names the missing setting when the chosen one is incomplete
       const agent::TurnLimits limits = agent::LimitsFromSettings(values);
-      // The toy tools are offered only with --tools; the runtime checks, times and cuts every call.
-      const auto native = std::make_shared<agent::NativeTools>();
-      if (parsed.options.tools) agent::AddToyTools(*native);
+      // With --tools the model is offered the Skill mechanism (chapter 1.5). The toy tools are in a library that
+      // the model does not see; a Skill brings some of them into the runtime when the model loads it. The runtime
+      // checks, times and cuts every call.
       agent::ToolRuntime tools(agent::RuntimeOptionsFromSettings(values));
-      tools.AddSource(native);
+      std::shared_ptr<agent::SkillTools> skills;
+      if (parsed.options.tools) {
+        const auto library = std::make_shared<agent::NativeTools>();
+        agent::AddToyTools(*library);
+        const std::vector<std::string> names = library->Names();
+        const auto found = values.find("skills_dir");
+        const std::filesystem::path directory = found == values.end() || found->second.empty() ? "skills" : found->second;
+        const agent::SkillCatalog catalog =
+            agent::LoadSkills(directory, std::set<std::string>(names.begin(), names.end()),
+                              {agent::SkillTools::kLoad, agent::SkillTools::kUnload});
+        for (const std::string& problem : catalog.problems) spdlog::warn("Skill {}", problem);
+        if (catalog.skills.empty()) throw std::runtime_error("there is no usable Skill in \"" + directory.string() + "\"");
+        skills = std::make_shared<agent::SkillTools>(catalog, library, tools);
+        tools.AddSource(skills);
+      }
+      agent::Hooks extra_hooks;
+      if (skills) extra_hooks.push_back(skills);
       llm::UseUtf8Console();
       const auto transport = http::MakeCurlTransport();
       llm::RunChat(*transport, providers, start, llm::OptionsFromSettings(values), parsed.options.system,
-                   parsed.options.tools ? &tools : nullptr, limits, std::cin, std::cout, std::cerr);
+                   parsed.options.tools ? &tools : nullptr, limits, std::cin, std::cout, std::cerr, extra_hooks);
       return 0;
     } catch (const std::exception& e) {
       std::cerr << "error: " << e.what() << '\n';

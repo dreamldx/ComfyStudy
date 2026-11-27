@@ -6,6 +6,7 @@
 
 #include <chrono>
 #include <functional>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -60,6 +61,13 @@ class NativeTools final : public ToolSource {
       co_return co_await handler(args);
     });
   }
+
+  // A source with only the tools called `names` (those this one has), in the order they were added here.
+  // The tools are shared, not copied: they are the same functions. Skills (chapter 1.5) use this to bring
+  // some tools into the runtime and take them out again.
+  std::shared_ptr<NativeTools> Subset(const std::vector<std::string>& names) const;
+  bool Has(const std::string& name) const;
+  std::vector<std::string> Names() const;
 
   std::vector<ToolSpec> Specs() const override;
   boost::asio::awaitable<ToolResult> Call(const std::string& name, const json::Value& arguments) override;

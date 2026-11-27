@@ -20,6 +20,9 @@ discord_token =
 ; many bytes of a tool's result are kept (longer results are cut, and the model is told).
 ; tool_timeout_ms = 30000
 ; tool_result_max_bytes = 16384
+; With --chat --tools: the directory with the Skills (one subdirectory with a SKILL.md for each). A relative
+; path starts at the directory the program is run from.
+; skills_dir = skills
 
 ; OpenAI, or any OpenAI-compatible server.
 ; Which of OpenAI's two request formats to use: chat (Chat Completions, the default) or responses.

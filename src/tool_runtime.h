@@ -37,6 +37,8 @@ class ToolSource {
   virtual ~ToolSource() = default;
   virtual std::vector<ToolSpec> Specs() const = 0;
   virtual boost::asio::awaitable<ToolResult> Call(const std::string& name, const json::Value& arguments) = 0;
+  // The conversation starts over: forget what belongs to it. Nothing by default.
+  virtual void StartOver() {}
 };
 
 struct RuntimeOptions {
@@ -56,6 +58,14 @@ class ToolRuntime final : public ToolSet {
 
   // Throws std::invalid_argument when the source has a tool whose name another source already has.
   void AddSource(std::shared_ptr<ToolSource> source);
+
+  // Takes a source away together with its tools; false when it was not added. A call of that source that
+  // is running goes on (the runtime holds on to the source for as long as the call needs it), so a tool
+  // may remove its own source, which is what unloading a Skill from a tool does.
+  bool RemoveSource(const std::shared_ptr<ToolSource>& source);
+
+  // Passes StartOver on to every source.
+  void StartOver() override;
 
   // How the tool is classified, or nothing when there is no such tool now.
   std::optional<Effect> EffectOf(const std::string& name) const;

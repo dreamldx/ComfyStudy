@@ -24,6 +24,8 @@ add_comfystudy_test(test_tool)
 add_comfystudy_test(test_agent)
 add_comfystudy_test(test_schema)
 add_comfystudy_test(test_tool_runtime)
+add_comfystudy_test(test_skill)
+add_comfystudy_test(test_skill_tools)
 # These two start a small HTTP server on the loopback interface.
 target_link_libraries(test_transport PRIVATE httplib::httplib)
 target_link_libraries(test_llm_client PRIVATE httplib::httplib)

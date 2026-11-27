@@ -47,6 +47,8 @@ class FakeSource final : public agent::ToolSource {
     }
   }
   std::vector<agent::ToolSpec> Specs() const override { return specs_; }
+  void StartOver() override { ++starts; }
+  int starts = 0;
   asio::awaitable<agent::ToolResult> Call(const std::string& name, const Json& arguments) override {
     ++calls[name];
     co_return co_await handlers_.at(name)(arguments);
@@ -332,4 +334,47 @@ TEST(RuntimeOptions, ABadValueIsAnErrorThatNamesTheSetting) {
       EXPECT_TRUE(Contains(e.what(), bad.begin()->first)) << e.what();
     }
   }
+}
+
+TEST(ToolRuntime, ARemovedSourceTakesItsToolsAwayAndTheOthersStay) {
+  auto first = std::make_shared<FakeSource>();
+  auto second = std::make_shared<FakeSource>();
+  first->Add(Spec("a"), Says("a"));
+  second->Add(Spec("b"), Says("b"));
+  agent::ToolRuntime runtime;
+  runtime.AddSource(first);
+  runtime.AddSource(second);
+  EXPECT_TRUE(runtime.RemoveSource(second));
+  EXPECT_EQ(Names(runtime.Definitions()), "a");
+  const agent::ToolResult gone = Await(runtime.Run(Call("b", json::Object())));
+  EXPECT_TRUE(gone.is_error);
+  EXPECT_TRUE(Contains(gone.text, "there is no tool called \"b\""));
+  EXPECT_FALSE(runtime.RemoveSource(second));  // it is not there any more
+  runtime.AddSource(second);                   // and may come back
+  EXPECT_EQ(Names(runtime.Definitions()), "a,b");
+}
+
+TEST(ToolRuntime, ASourceMayBeRemovedByTheCallThatIsRunning) {
+  auto source = std::make_shared<FakeSource>();
+  agent::ToolRuntime runtime;
+  source->Add(Spec("once"), [&runtime, source](const Json&) -> asio::awaitable<agent::ToolResult> {
+    runtime.RemoveSource(source);
+    co_return agent::ToolResult{"done", false};
+  });
+  runtime.AddSource(source);
+  const agent::ToolResult result = Await(runtime.Run(Call("once", json::Object())));
+  EXPECT_FALSE(result.is_error);
+  EXPECT_EQ(result.text, "done");
+  EXPECT_EQ(Names(runtime.Definitions()), "");
+}
+
+TEST(ToolRuntime, StartOverIsPassedToEverySource) {
+  auto first = std::make_shared<FakeSource>();
+  auto second = std::make_shared<FakeSource>();
+  agent::ToolRuntime runtime;
+  runtime.AddSource(first);
+  runtime.AddSource(second);
+  runtime.StartOver();
+  EXPECT_EQ(first->starts, 1);
+  EXPECT_EQ(second->starts, 1);
 }

@@ -39,6 +39,9 @@ class ToolSet {
   virtual ~ToolSet() = default;
   virtual std::vector<llm::ToolDefinition> Definitions() const = 0;
   virtual boost::asio::awaitable<ToolResult> Run(const llm::ToolCallBlock& call) = 0;
+  // The conversation starts over (/reset): whatever the tools remember about it is forgotten (chapter 1.5:
+  // the Skills that were loaded). Nothing by default.
+  virtual void StartOver() {}
 };
 
 }  // namespace agent

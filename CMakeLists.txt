@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(ComfyStudy VERSION 1.4.0 LANGUAGES CXX)
+project(ComfyStudy VERSION 1.5.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -35,7 +35,7 @@ target_compile_definitions(comfystudy_asio INTERFACE _WIN32_WINNT=0x0A00 BOOST_A
 add_library(comfystudy_core STATIC
   src/greeting.cpp src/net_probe.cpp src/options.cpp src/config.cpp
   src/http_client.cpp src/curl_transport.cpp src/conversation.cpp src/provider.cpp
-  src/json.cpp src/schema.cpp src/tool_runtime.cpp src/llm_wire.cpp src/llm_client.cpp src/tool.cpp src/native_tools.cpp src/agent.cpp src/console_hook.cpp src/chat.cpp
+  src/json.cpp src/schema.cpp src/tool_runtime.cpp src/llm_wire.cpp src/llm_client.cpp src/tool.cpp src/native_tools.cpp src/skill.cpp src/skill_tools.cpp src/agent.cpp src/console_hook.cpp src/chat.cpp
   ${COMFYSTUDY_PLATFORM_SOURCES})
 target_include_directories(comfystudy_core PUBLIC src)
 target_link_libraries(comfystudy_core PUBLIC comfystudy_options comfystudy_asio
