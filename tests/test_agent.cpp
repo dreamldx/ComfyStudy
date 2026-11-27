@@ -11,6 +11,7 @@
 
 #include "fake_transport.h"
 #include "scripted_transport.h"
+#include "toy_runtime.h"
 
 namespace {
 
@@ -109,12 +110,11 @@ class ThrowingHook final : public agent::AgentHook {
 struct World {
   explicit World(std::vector<http::Response> script, const std::string& question = "add things")
       : transport(std::move(script)), log(std::make_shared<std::vector<std::string>>()) {
-    agent::AddToyTools(tools);
     conversation.messages.push_back({llm::Role::kUser, {llm::TextBlock{question}}});
     hooks.push_back(std::make_shared<RecordingHook>(log));
   }
   ScriptedTransport transport;
-  agent::ToolTable tools;
+  agent::ToolRuntime tools = ToyRuntime();
   llm::Conversation conversation;
   std::shared_ptr<std::vector<std::string>> log;
   std::vector<std::shared_ptr<agent::AgentHook>> hooks;
@@ -187,7 +187,7 @@ TEST(Turn, TheToolsAreOfferedInEveryRequest) {
   Play(world);
   for (std::size_t i = 0; i < 2; ++i) {
     const Json body = RequestBody(world, i);
-    ASSERT_EQ(body["tools"].size(), 2u) << i;
+    ASSERT_EQ(body["tools"].size(), 4u) << i;
     EXPECT_EQ(body["tools"][0]["name"], "add");
   }
 }
@@ -398,7 +398,7 @@ TEST(Limits, ValuesThatAreNotNumbersAreErrors) {
 
 TEST(Turn, WithoutToolsNoToolsAreOfferedAndACallIsAnErrorResult) {
   World world({Ok(Asks({CallAdd("t1", 1, 2)})), Ok(Said("ok"))});
-  world.tools = agent::ToolTable();  // an empty table: nothing offered
+  world.tools = agent::ToolRuntime();  // no source: nothing offered
   Play(world);
   EXPECT_FALSE(RequestBody(world, 0).contains("tools"));
   EXPECT_EQ(RequestBody(world, 1)["messages"][2]["content"][0]["is_error"], true);

@@ -12,6 +12,7 @@
 #include "json.h"
 
 #include "scripted_transport.h"
+#include "toy_runtime.h"
 
 namespace {
 
@@ -195,8 +196,7 @@ llm::Block CallSleep(const std::string& id, int ms) { return llm::ToolCallBlock{
 }  // namespace
 
 TEST(Chat, ToolCallsArePrintedAndTheAnswerFollows) {
-  agent::ToolTable tools;
-  agent::AddToyTools(tools);
+  agent::ToolRuntime tools = ToyRuntime();
   const Transcript run = Chat({Ok(Asks({CallAdd("t1", Json{{"a", 2}, {"b", 3}})})), Ok(Answer("The sum is 5."))}, {Anthropic()},
                               "anthropic", "what is 2 plus 3\n", {}, "", &tools);
   const std::size_t call = run.out.find("[tool] add {\"a\":2,\"b\":3}\n");
@@ -208,12 +208,11 @@ TEST(Chat, ToolCallsArePrintedAndTheAnswerFollows) {
   EXPECT_LT(call, result);
   EXPECT_LT(result, answer);
   ASSERT_EQ(run.seen.size(), 2u);
-  EXPECT_EQ(json::Parse(run.seen[0].body)["tools"].size(), 2u);  // add and sleep are offered
+  EXPECT_EQ(json::Parse(run.seen[0].body)["tools"].size(), 4u);  // the four toy tools are offered
 }
 
 TEST(Chat, AToolThatFailsIsPrintedAsAnErrorAndTheModelStillAnswers) {
-  agent::ToolTable tools;
-  agent::AddToyTools(tools);
+  agent::ToolRuntime tools = ToyRuntime();
   const Transcript run = Chat({Ok(Asks({CallAdd("t1", Json{{"a", 1}})})), Ok(Answer("I need both numbers."))}, {Anthropic()}, "anthropic",
                               "add\n", {}, "", &tools);
   EXPECT_TRUE(Contains(run.out, "[tool] add -> error: "));
@@ -227,8 +226,7 @@ TEST(Chat, WithoutToolsNothingIsOfferedAndNothingIsPrintedAboutTools) {
 }
 
 TEST(Chat, ATurnThatRunsOutOfTimeIsReportedAndForgotten) {
-  agent::ToolTable tools;
-  agent::AddToyTools(tools);
+  agent::ToolRuntime tools = ToyRuntime();
   agent::TurnLimits limits;
   limits.deadline = std::chrono::milliseconds(100);
   const Transcript run = Chat({Ok(Asks({CallSleep("s1", 5000)})), Ok(Answer("Hi"))}, {Anthropic()}, "anthropic", "sleep\nhello\n", {}, "",
@@ -242,8 +240,7 @@ TEST(Chat, ATurnThatRunsOutOfTimeIsReportedAndForgotten) {
 }
 
 TEST(Chat, ATurnThatKeepsCallingToolsStopsAtTheStepLimit) {
-  agent::ToolTable tools;
-  agent::AddToyTools(tools);
+  agent::ToolRuntime tools = ToyRuntime();
   agent::TurnLimits limits;
   limits.max_steps = 2;
   const Transcript run = Chat({Ok(Asks({CallAdd("t1", Json{{"a", 1}, {"b", 1}})})), Ok(Asks({CallAdd("t2", Json{{"a", 1}, {"b", 1}})}))},
@@ -252,8 +249,7 @@ TEST(Chat, ATurnThatKeepsCallingToolsStopsAtTheStepLimit) {
 }
 
 TEST(Chat, CtrlCStopsTheRunningTurnAndTheChatGoesOn) {
-  agent::ToolTable tools;
-  agent::AddToyTools(tools);
+  agent::ToolRuntime tools = ToyRuntime();
   agent::TurnLimits real_limits;  // the real program has a deadline too (the default is five minutes)
   real_limits.deadline = std::chrono::minutes(5);
   std::thread presser([] {

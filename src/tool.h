@@ -2,7 +2,6 @@
 
 #include <boost/asio.hpp>
 
-#include <functional>
 #include <string>
 #include <vector>
 
@@ -11,11 +10,24 @@
 
 namespace agent {
 
+// What a tool does to the world. Not assumed to be harmless: a tool that says nothing is kSideEffect.
+//   kReadOnly    only looks (a sum, a search, a file read); several can run at the same time and a failed
+//                one can be tried again
+//   kSideEffect  changes something (writes a file, sends a message)
+//   kDangerous   what cannot be undone (deletes, pays, shuts down); the runtime refuses to run it unless
+//                it was told to allow it
+enum class Effect { kReadOnly, kSideEffect, kDangerous };
+
+const char* EffectName(Effect effect);  // "read-only", "side-effect", "dangerous"
+
 // What running a tool gave. A failure is a result too (is_error), not an exception: the model is
-// told what went wrong and can try again.
+// told what went wrong and can try again. `truncated` and `effect` are filled in by the runtime (chapter
+// 1.4): the text was cut because it was too long, and how the tool is classified.
 struct ToolResult {
   std::string text;
   bool is_error = false;
+  bool truncated = false;
+  Effect effect = Effect::kSideEffect;
 };
 
 // The two things the loop asks about tools: which ones there are now, and to run this call. The loop
@@ -28,29 +40,5 @@ class ToolSet {
   virtual std::vector<llm::ToolDefinition> Definitions() const = 0;
   virtual boost::asio::awaitable<ToolResult> Run(const llm::ToolCallBlock& call) = 0;
 };
-
-using ToolFunction = std::function<boost::asio::awaitable<ToolResult>(const json::Value& arguments)>;
-
-// A table of hand-written tools. A tool called by a name that is not in it, a call whose arguments
-// were not valid JSON, and a tool function that throws all come back as error results.
-class ToolTable final : public ToolSet {
- public:
-  void Add(llm::ToolDefinition definition, ToolFunction function);
-
-  std::vector<llm::ToolDefinition> Definitions() const override;
-  boost::asio::awaitable<ToolResult> Run(const llm::ToolCallBlock& call) override;
-
- private:
-  struct Entry {
-    llm::ToolDefinition definition;
-    ToolFunction function;
-  };
-  std::vector<Entry> entries_;  // in the order they were added
-};
-
-// The two tools of chapter 1.3:
-//   add(a, b)   the sum of two numbers
-//   sleep(ms)   waits that long (at most 60000 ms); a cancellation ends the wait at once
-void AddToyTools(ToolTable& table);
 
 }  // namespace agent

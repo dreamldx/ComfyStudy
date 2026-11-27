@@ -37,6 +37,8 @@ const std::vector<Key>& KnownKeys() {
         {"llm_reasoning", "off"},
         {"agent_max_steps", "10"},
         {"agent_turn_timeout_ms", "300000"},
+        {"tool_timeout_ms", "30000"},
+        {"tool_result_max_bytes", "16384"},
         {"openai_api", "chat"},
         {"openai_model", ""},
         {"openai_api_key", ""},

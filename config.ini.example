@@ -16,6 +16,10 @@ discord_token =
 ; answer may take in milliseconds (0: no limit).
 ; agent_max_steps = 10
 ; agent_turn_timeout_ms = 300000
+; How long one tool call may take in milliseconds (0: no limit; a tool may have a limit of its own), and how
+; many bytes of a tool's result are kept (longer results are cut, and the model is told).
+; tool_timeout_ms = 30000
+; tool_result_max_bytes = 16384
 
 ; OpenAI, or any OpenAI-compatible server.
 ; Which of OpenAI's two request formats to use: chat (Chat Completions, the default) or responses.

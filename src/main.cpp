@@ -10,7 +10,9 @@
 
 #include "agent.h"
 #include "chat.h"
+#include "native_tools.h"
 #include "tool.h"
+#include "tool_runtime.h"
 #include "config.h"
 #include "curl_transport.h"
 #include "greeting.h"
@@ -65,8 +67,11 @@ int main(int argc, char** argv) {
       const std::string start = llm::DefaultProviderName(values);
       llm::MakeProvider(values, start);  // throws and names the missing setting when the chosen one is incomplete
       const agent::TurnLimits limits = agent::LimitsFromSettings(values);
-      agent::ToolTable tools;  // the two toy tools, offered only with --tools
-      if (parsed.options.tools) agent::AddToyTools(tools);
+      // The toy tools are offered only with --tools; the runtime checks, times and cuts every call.
+      const auto native = std::make_shared<agent::NativeTools>();
+      if (parsed.options.tools) agent::AddToyTools(*native);
+      agent::ToolRuntime tools(agent::RuntimeOptionsFromSettings(values));
+      tools.AddSource(native);
       llm::UseUtf8Console();
       const auto transport = http::MakeCurlTransport();
       llm::RunChat(*transport, providers, start, llm::OptionsFromSettings(values), parsed.options.system,
