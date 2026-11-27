@@ -1,7 +1,7 @@
 # 阶段 1：LLM 与对话通道
 
 - 类型：主线
-- 状态：进行中（已完成 1.1、1.2、1.3）
+- 状态：进行中（已完成 1.1、1.2、1.3、1.4）
 - 阶段 tag：`phase-01-llm-chat`（阶段开始时打在主线上；阶段完成后在 GitHub 上发布 Release）
 - 完成标准：在 Discord 里与机器人对话，它能调用玩具工具并回答，也能看懂用户发来的图片，重启后能接着聊
 
@@ -12,7 +12,7 @@
 | 1.1 | [HTTP 与 JSON](1.1-http-json.md) | `chapter-1.1-http-json` | 用 libcurl 发出异步的 HTTP 请求：定义 `Transport` 接口和它的 libcurl 实现（错误分类、取消、日志里藏起密钥都在这里定下来），把同一个问题按 OpenAI Chat Completions、OpenAI Responses 和 Anthropic Messages 三种格式发给模型，读出回答，并对比三种格式的差别 |
 | 1.2 | [LLM 双协议与 Provider 抽象](1.2-llm-providers.md) | `chapter-1.2-llm-providers` | 命令行里能多轮对话，三种请求格式收在同一个入口后面；消息由文本块和推理块组成，推理块原样保存、原样回传，对话中途可以用 `/use` 换 Provider |
 | 1.3 | [Tool Calling 循环](1.3-tool-calling.md) | `chapter-1.3-tool-calling` | 模型自己决定调用工具，程序执行后把结果送回去，循环到模型不再调用为止；一个 Turn 由若干个 Step 组成，可以被 Ctrl+C 取消或超时，命令行的输出全部走 Agent 钩子 |
-| 1.4 | [工具运行时：注册、校验与执行](1.4-tool-runtime.md) | `chapter-1.4-tool-runtime` | 把工具做成一层运行时：工具定义只写一份（JSON Schema、参数解析和说明文字由同一份 C++ 定义生成），所有工具来源（原生、Skill、MCP、脚本）通过统一的 `ToolSource` 接口注册；执行前校验参数，执行时有超时和并发策略，结果统一处理（过大截断、错误作为结果回传），工具按只读、有副作用、危险分类 |
+| 1.4 | [工具运行时：注册、校验与执行](1.4-tool-runtime.md) | `chapter-1.4-tool-runtime` | 把工具做成一层运行时：所有来源（C++ 原生、以后的 Skill、MCP、脚本）走同一个 `ToolSource` 接口；每次调用先按 Schema 校验参数（一次列出全部问题），带着时间限制执行，结果过长就在字符边界截断，出错都作为结果回传；工具定义只写一份（C++ 结构体加 Glaze 生成 Schema）；工具按只读、有副作用、危险分类，危险的默认拒绝 |
 | 1.5 | [Skill 机制：按需加载的能力](1.5-skills.md) | `chapter-1.5-skills` | 在 1.3 的循环和 1.4 的工具运行时上实现 Skill 目录、`load_skill`/`unload_skill` 与按会话动态工具集，用玩具 Skill 演示按需加载 |
 | 1.6 | [上下文规划与组装](1.6-context-assembly.md) | `chapter-1.6-context-assembly` | 设计并实现上下文的组装：把系统提示词、历史对话、当前状态、最新用户信息按固定的顺序拼成发给模型的内容（与具体协议无关），再由 Provider 转成各自的格式；组装是一个纯函数，同样的输入得到逐字节相同的输出，并能打印每一部分占多少 token |
 | 1.7 | [Discord 机器人](1.7-discord-bot.md) | `chapter-1.7-discord-bot` | 用 DPP 收发消息，每频道独立会话，串行任务队列 |
