@@ -134,7 +134,7 @@ git checkout chapter-0.0-repo-init
 
 ## 开发环境
 
-Windows 11；**PowerShell**（必需的开发 shell）；MSVC（Visual Studio 18）；CMake（3.25 以上）与 Ninja；vcpkg；NVIDIA GPU 与 CUDA 13（开发机为 RTX 4090 24GB）；Discord 机器人应用与令牌；OpenAI 或 Anthropic 的 API 密钥。具体版本随章节记录在教程里。
+Windows 11；**PowerShell**（必需的开发 shell）；MSVC（Visual Studio 18）；CMake（3.25 以上）与 Ninja；vcpkg（用 scoop 装：`scoop install vcpkg`）；NVIDIA GPU 与 CUDA 13（开发机为 RTX 4090 24GB）；Discord 机器人应用与令牌；OpenAI 或 Anthropic 的 API 密钥。具体版本随章节记录在教程里。
 
 ### 辅助脚本
 
@@ -152,9 +152,9 @@ Windows 11；**PowerShell**（必需的开发 shell）；MSVC（Visual Studio 18
 
 | 脚本 | 作用 | 用法 |
 |---|---|---|
-| `env.ps1` | 把**当前 PowerShell 会话**切换到 MSVC x64 编译环境：定位 Visual Studio，运行 `vcvars64.bat`，并把环境变量导入当前会话。可以重复运行 | `. .\scripts\env.ps1`（注意开头的点和空格，称为“点源”），成功会打印 `MSVC x64 environment ready` |
+| `env.ps1` | 把**当前 PowerShell 会话**切换到 MSVC x64 编译环境：定位 Visual Studio，运行 `vcvars64.bat`，并把环境变量导入当前会话；再把 `VCPKG_ROOT` 设成 scoop 装的 vcpkg（没装就报错，提示 `scoop install vcpkg`），项目只用这一个 vcpkg，不用 Visual Studio 自带的（原因见 0.3 的“常见问题与坑”）。可以重复运行 | `. .\scripts\env.ps1`（注意开头的点和空格，称为“点源”），成功会打印 `MSVC x64 environment ready` |
 | `dev.ps1` | 在 MSVC 环境里运行任意命令，并先进入仓库根目录；命令结束后还原会话，所以不必先运行 `env.ps1` | `.\scripts\dev.ps1 cmake --preset windows-debug` |
-| `check-env.ps1` | 检查需要的工具是否齐全：`cl`（x64）、`link`、`dumpbin`、`cmake`（3.25 以上）、`ninja`、`git`、`vcpkg`、`powershell`，缺哪个就列出哪个 | 先 `. .\scripts\env.ps1`，再 `.\scripts\check-env.ps1` |
+| `check-env.ps1` | 检查需要的工具是否齐全：`cl`（x64）、`link`、`dumpbin`、`cmake`（3.25 以上）、`ninja`、`git`、`vcpkg`、`powershell`，缺哪个就列出哪个；最后多一行 `INFO VCPKG_ROOT`，显示用的 vcpkg 在哪里 | 先 `. .\scripts\env.ps1`，再 `.\scripts\check-env.ps1` |
 | `check-build.ps1` | 验证 CMake 构建的行为：Debug 与 Release 分别构建；第二次构建无事可做；改一个头文件只重编包含它的源文件；Release 不碰 Debug 的文件；两者的运行库不同；`clean` 目标有效 | 先 `. .\scripts\env.ps1`，再 `.\scripts\check-build.ps1` |
 | `check-vs.ps1` | 验证 `windows-vs` 预设：能生成 Visual Studio 解决方案和项目文件，`comfystudy` 是启动项目，能构建，且程序输出正确 | 先 `. .\scripts\env.ps1`，再 `.\scripts\check-vs.ps1` |
 | `check-docs.ps1` | 检查教程章节：状态行合法、已完成的章节九个小节齐全、`<!-- src: -->` 标注的代码片段与源码一致（已打 tag 的章节按 tag 当时的源码比对）、支线章节的分支名正确。加 `-CheckTags` 还会检查章节 tag 与阶段 tag 是否真的存在 | `.\scripts\check-docs.ps1 [-CheckTags]` |

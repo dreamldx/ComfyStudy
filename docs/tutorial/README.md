@@ -15,7 +15,7 @@
 - 教程用中文写，代码标识符与注释用英文。
 
 ## 环境要求（预期，随阶段核实）
-Windows 11；MSVC（VS 18）；CMake（3.25 以上）与 Ninja；vcpkg；NVIDIA GPU（开发机为 RTX 4090 24GB）与 CUDA 13；
+Windows 11；MSVC（VS 18）；CMake（3.25 以上）与 Ninja；vcpkg（scoop 安装）；NVIDIA GPU（开发机为 RTX 4090 24GB）与 CUDA 13；
 Discord 机器人应用与令牌；OpenAI 或 Anthropic 的 API 密钥。详见 `reference/library-versions.md`。
 
 ## 阶段目录
