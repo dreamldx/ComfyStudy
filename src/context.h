@@ -81,9 +81,11 @@ class ContextError : public std::runtime_error {
 // left out, the state says so ("earlier turns not shown: N"). Throws ContextError when it still does not fit.
 Context BuildContext(const ContextInputs& inputs);
 
-// A rough count, without a tokenizer: about one token for four ASCII bytes and one for every other
-// character. Good enough to see what takes the room and to keep a request from growing beyond the window; it
-// is not what the service will count.
+// A rough count, without a tokenizer: about one token for four letters, digits or spaces, and one for each
+// punctuation mark and for each character that is not ASCII. It is not what the service counts: on five
+// samples of text it was a fifth to a third too high for an OpenAI-compatible model and a sixth to two fifths
+// too low for Claude (chapter 1.6 has the table), and it does not know what a service adds by itself (the
+// roles, say). Good enough to see what takes the room and to keep the request away from the window.
 std::size_t EstimateTokens(const std::string& text);
 
 // The setting context_budget_tokens: a whole number of tokens, 0 (the default) for "what the window leaves" (DefaultBudget).

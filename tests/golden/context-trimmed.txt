@@ -42,4 +42,4 @@ add: the tool add
   state                   3 items, 125 tokens
   input                   1 items, 10 tokens
   turn                    2 items, 18 tokens
-  total 292 tokens of 310; dropped 4 messages (1 turns)
+  total 292 tokens of 383; dropped 4 messages (1 turns)

@@ -1,6 +1,7 @@
 #include "context.h"
 
 #include <algorithm>
+#include <cctype>
 #include <sstream>
 
 #include <charconv>
@@ -30,6 +31,8 @@ struct Counter {
 
   std::size_t Block(const llm::Block& block) const {
     if (const auto* text = std::get_if<llm::TextBlock>(&block)) return (*this)(text->text);
+    // The whole payload, signature included: it is sent back, and the services count it (a Claude request with
+    // earlier answers that thought was about three times what the words alone came to).
     if (const auto* reasoning = std::get_if<llm::ReasoningBlock>(&block)) return (*this)(json::Dump(reasoning->payload));
     if (const auto* call = std::get_if<llm::ToolCallBlock>(&block)) {
       return (*this)(call->name) + (*this)(call->arguments_text.empty() ? json::Dump(call->arguments) : call->arguments_text);
@@ -83,17 +86,20 @@ std::string Quoted(const std::string& text) {
 }  // namespace
 
 std::size_t EstimateTokens(const std::string& text) {
-  std::size_t ascii = 0;
-  std::size_t others = 0;
+  std::size_t plain = 0;  // letters, digits and white space: about four to a token
+  std::size_t marks = 0;  // ASCII punctuation: about one token each (JSON, code and tool definitions are full of it)
+  std::size_t others = 0;  // every other character (Chinese, accents, symbols): about one token each
   for (const char c : text) {
     const auto byte = static_cast<unsigned char>(c);
-    if (byte < 0x80) {
-      ++ascii;
-    } else if ((byte & 0xC0u) != 0x80u) {
-      ++others;  // the first byte of a character
+    if (byte >= 0x80) {
+      if ((byte & 0xC0u) != 0x80u) ++others;  // the first byte of a character
+    } else if (std::isalnum(byte) != 0 || std::isspace(byte) != 0) {
+      ++plain;
+    } else {
+      ++marks;
     }
   }
-  return (ascii + 3) / 4 + others;
+  return (plain + 3) / 4 + marks + others;
 }
 
 std::size_t ContextBudgetFromSettings(const config::Values& settings) {

@@ -22,7 +22,7 @@ add: the tool add
     | 5
 [4] assistant
   text
-    | It is 5.
+    | It is 5. Adding two whole numbers gives a whole number, and here the sum is five.
 [5] user
   text
     | thanks
@@ -49,8 +49,8 @@ add: the tool add
   tools                   2 items, 78 tokens
   system: instructions    1 items, 9 tokens
   system: rules           1 items, 30 tokens
-  history                 6 items, 108 tokens
+  history                 6 items, 181 tokens
   state                   2 items, 87 tokens
   input                   1 items, 10 tokens
   turn                    2 items, 18 tokens
-  total 340 tokens of 100000; dropped 0 messages (0 turns)
+  total 413 tokens of 100000; dropped 0 messages (0 turns)
