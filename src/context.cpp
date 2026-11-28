@@ -102,6 +102,39 @@ std::size_t EstimateTokens(const std::string& text) {
   return (plain + 3) / 4 + marks + others;
 }
 
+std::string FormatDate(std::chrono::system_clock::time_point now, std::chrono::minutes utc_offset) {
+  using namespace std::chrono;
+  static const char* const kWeekdays[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+  const sys_days day = floor<days>(now + utc_offset);
+  const year_month_day date{day};
+  const unsigned weekday_index = weekday{day}.c_encoding();  // 0 is Sunday
+  const auto two = [](unsigned n) { return (n < 10 ? "0" : "") + std::to_string(n); };
+  const long long offset_minutes = utc_offset.count();
+  const long long magnitude = offset_minutes < 0 ? -offset_minutes : offset_minutes;
+  return std::to_string(static_cast<int>(date.year())) + "-" + two(static_cast<unsigned>(date.month())) + "-" +
+         two(static_cast<unsigned>(date.day())) + " " + kWeekdays[weekday_index] + " (UTC" + (offset_minutes < 0 ? "-" : "+") +
+         two(static_cast<unsigned>(magnitude / 60)) + ":" + two(static_cast<unsigned>(magnitude % 60)) + ")";
+}
+
+std::chrono::minutes LocalUtcOffset(std::chrono::system_clock::time_point now) {
+  try {
+    return std::chrono::duration_cast<std::chrono::minutes>(std::chrono::current_zone()->get_info(std::chrono::floor<std::chrono::seconds>(now)).offset);
+  } catch (const std::exception&) {
+    return std::chrono::minutes(0);  // no time zone data on this system: say UTC rather than guess
+  }
+}
+
+Section SessionSection(const SessionInfo& info, std::chrono::system_clock::time_point now, std::chrono::minutes utc_offset) {
+  std::string text = "channel: " + info.channel + "\ndate: " + FormatDate(now, utc_offset);
+  if (info.has_skills) {
+    std::string loaded;
+    for (const std::string& name : info.loaded_skills) loaded += (loaded.empty() ? "" : ", ") + name;
+    text += "\nloaded skills: " + (loaded.empty() ? std::string("none") : loaded);
+  }
+  if (info.max_steps > 0) text += "\nsteps: at most " + std::to_string(info.max_steps) + " model calls for one answer";
+  return {"session state", text};
+}
+
 std::size_t ContextBudgetFromSettings(const config::Values& settings) {
   const auto found = settings.find("context_budget_tokens");
   if (found == settings.end() || found->second.empty()) return 0;

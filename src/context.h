@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <cstddef>
 #include <functional>
 #include <stdexcept>
@@ -87,6 +88,26 @@ Context BuildContext(const ContextInputs& inputs);
 // too low for Claude (chapter 1.6 has the table), and it does not know what a service adds by itself (the
 // roles, say). Good enough to see what takes the room and to keep the request away from the window.
 std::size_t EstimateTokens(const std::string& text);
+
+// What a session tells the model about itself in the state (the one section every request has). The date is
+// the only thing in it that comes from the clock; the caller reads the clock and passes it in, so BuildContext
+// stays a pure function and the same time gives the same text.
+struct SessionInfo {
+  std::string channel;                     // "cli", or the channel of the chat
+  bool has_skills = false;                 // the Skill mechanism is on: say what is loaded
+  std::vector<std::string> loaded_skills;
+  int max_steps = 0;                       // the most model calls for one answer; 0: not said
+};
+
+// "2026-11-28 Saturday (UTC+08:00)": the day in the time zone that is `utc_offset` from UTC, its weekday, and
+// the offset. A model has no clock and no calendar; without this it guesses the date from what it was trained on.
+std::string FormatDate(std::chrono::system_clock::time_point now, std::chrono::minutes utc_offset);
+
+// The offset of the local time zone from UTC at `now` (zero when the system has no time zone data).
+std::chrono::minutes LocalUtcOffset(std::chrono::system_clock::time_point now);
+
+// The section "session state": channel, date, and (with Skills) what is loaded and how many steps there are.
+Section SessionSection(const SessionInfo& info, std::chrono::system_clock::time_point now, std::chrono::minutes utc_offset);
 
 // The setting context_budget_tokens: a whole number of tokens, 0 (the default) for "what the window leaves" (DefaultBudget).
 // Throws llm::Error when the value is not a whole number or is negative.

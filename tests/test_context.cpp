@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 
+#include <chrono>
 #include <cstdlib>
 #include <fstream>
 #include <sstream>
@@ -495,4 +496,67 @@ TEST(ContextHook, AlsoSaysHowMuchWasReadFromTheCacheAndHowMuchWasWrittenToIt) {
   reply.cache_written_tokens = 300;
   Await(hook.OnReplyReceived(agent::ReplyReceived{1, reply}));
   EXPECT_EQ(out.str(), "[context] the service counted 812 input tokens (about 0 were estimated); 500 read from the cache; 300 written to it\n");
+}
+
+// --- The date in the state ------------------------------------------------------------------------
+
+namespace {
+
+std::chrono::system_clock::time_point At(int year, unsigned month, unsigned day, int hour, int minute = 0) {
+  using namespace std::chrono;
+  return sys_days{std::chrono::year{year} / std::chrono::month{month} / std::chrono::day{day}} + hours{hour} + minutes{minute};
+}
+
+}  // namespace
+
+TEST(FormatDate, TheDayTheWeekdayAndTheOffsetFromUtc) {
+  EXPECT_EQ(agent::FormatDate(At(2026, 11, 28, 12), std::chrono::minutes(0)), "2026-11-28 Saturday (UTC+00:00)");
+  EXPECT_EQ(agent::FormatDate(At(1970, 1, 1, 0), std::chrono::minutes(0)), "1970-01-01 Thursday (UTC+00:00)");
+  EXPECT_EQ(agent::FormatDate(At(2028, 2, 29, 9), std::chrono::minutes(0)), "2028-02-29 Tuesday (UTC+00:00)");  // a leap day
+}
+
+TEST(FormatDate, TheOffsetMovesTheDateAcrossMidnightInBothDirections) {
+  EXPECT_EQ(agent::FormatDate(At(2026, 11, 28, 20), std::chrono::minutes(8 * 60)), "2026-11-29 Sunday (UTC+08:00)");
+  EXPECT_EQ(agent::FormatDate(At(2026, 11, 28, 3), std::chrono::minutes(-8 * 60)), "2026-11-27 Friday (UTC-08:00)");
+  EXPECT_EQ(agent::FormatDate(At(2026, 12, 31, 20), std::chrono::minutes(5 * 60 + 30)), "2027-01-01 Friday (UTC+05:30)");
+  EXPECT_EQ(agent::FormatDate(At(2026, 11, 28, 12), std::chrono::minutes(-(5 * 60 + 30))), "2026-11-28 Saturday (UTC-05:30)");
+}
+
+TEST(FormatDate, TheSameInstantGivesTheSameText) {
+  EXPECT_EQ(agent::FormatDate(At(2026, 11, 28, 12), std::chrono::minutes(60)), agent::FormatDate(At(2026, 11, 28, 12), std::chrono::minutes(60)));
+}
+
+TEST(LocalUtcOffset, IsAWholeNumberOfMinutesInTheRangeOfTheTimeZones) {
+  const std::chrono::minutes offset = agent::LocalUtcOffset(At(2026, 11, 28, 12));
+  EXPECT_GE(offset.count(), -12 * 60);
+  EXPECT_LE(offset.count(), 14 * 60);
+}
+
+TEST(SessionSection, HasTheChannelAndTheDateAndNothingAboutSkillsWhenThereAreNone) {
+  agent::SessionInfo info;
+  info.channel = "cli";
+  const agent::Section section = agent::SessionSection(info, At(2026, 11, 28, 12), std::chrono::minutes(0));
+  EXPECT_EQ(section.title, "session state");
+  EXPECT_EQ(section.text, "channel: cli\ndate: 2026-11-28 Saturday (UTC+00:00)");
+}
+
+TEST(SessionSection, TellsTheLoadedSkillsAndTheStepLimitWhenTheSkillMechanismIsOn) {
+  agent::SessionInfo info;
+  info.channel = "123";
+  info.has_skills = true;
+  info.max_steps = 10;
+  const agent::Section none = agent::SessionSection(info, At(2026, 11, 28, 12), std::chrono::minutes(0));
+  EXPECT_EQ(none.text,
+            "channel: 123\ndate: 2026-11-28 Saturday (UTC+00:00)\nloaded skills: none\nsteps: at most 10 model calls for one answer");
+  info.loaded_skills = {"calculator", "timer"};
+  EXPECT_TRUE(Contains(agent::SessionSection(info, At(2026, 11, 28, 12), std::chrono::minutes(0)).text, "loaded skills: calculator, timer\n"));
+}
+
+TEST(SessionSection, TheDateIsTheOnlyPartThatDependsOnTheClock) {
+  agent::SessionInfo info;
+  info.channel = "cli";
+  const std::string today = agent::SessionSection(info, At(2026, 11, 28, 12), std::chrono::minutes(0)).text;
+  const std::string tomorrow = agent::SessionSection(info, At(2026, 11, 29, 12), std::chrono::minutes(0)).text;
+  EXPECT_NE(today, tomorrow);
+  EXPECT_EQ(today.substr(0, today.find("date:")), tomorrow.substr(0, tomorrow.find("date:")));
 }
