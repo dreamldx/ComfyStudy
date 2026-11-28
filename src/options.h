@@ -25,6 +25,7 @@ struct Options {
   std::string prompt;                             // --prompt: ask the model one question and exit
   std::string system;                             // --system: an instruction that goes with it
   bool chat = false;                              // --chat: a conversation on the command line
+  bool discord = false;                           // --discord: run the Discord bot (chapter 1.7)
   bool show_context = false;                      // --show-context: with --chat, write down what each request is made of
   bool tools = false;                             // --tools: with --chat, the model may call the tools add and sleep
 #if defined(_WIN32)

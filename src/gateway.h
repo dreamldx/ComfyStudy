@@ -41,6 +41,10 @@ class Gateway {
   virtual void OnMessage(std::function<void(IncomingMessage)> handler) = 0;
   virtual void OnCommand(std::function<void(Command)> handler) = 0;
 
+  // Who is told that the connection cannot work and will not by itself: a refused token, an intent that is not
+  // switched on. Gets a sentence for the user that says what to do. Set before Start.
+  virtual void OnFatal(std::function<void(std::string)> handler) = 0;
+
   virtual void Start() = 0;                         // connect and begin delivering
   virtual boost::asio::awaitable<void> Stop() = 0;  // stop delivering, disconnect
 

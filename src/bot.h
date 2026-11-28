@@ -65,6 +65,9 @@ class Bot {
   // Asks Run to finish. Call it on the io_context thread (post from a signal handler or another thread).
   void RequestStop();
 
+  // Why the bot stopped when it was not asked to (the gateway said it cannot work), else nothing.
+  const std::optional<std::string>& Failure() const { return failure_; }
+
   std::size_t LaneCount() const;  // how many channels have a lane now (for tests and for /status)
 
  private:
@@ -92,6 +95,7 @@ class Bot {
   boost::asio::any_io_executor executor_;
   std::unique_ptr<boost::asio::steady_timer> stop_timer_;
   bool stop_requested_ = false;
+  std::optional<std::string> failure_;
   bool stopping_ = false;
   std::map<std::string, std::unique_ptr<Lane>> lanes_;
   int active_jobs_ = 0;  // lanes with an answer being made

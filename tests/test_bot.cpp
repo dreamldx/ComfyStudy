@@ -537,3 +537,22 @@ TEST(Bot, AfterAStopIsAskedForNothingNewIsTaken) {
   ASSERT_TRUE(w.Until([&] { return w.finished; }));
   EXPECT_EQ(w.transport.Count(), 1u);
 }
+
+TEST(Bot, AProblemThatMakesTheGatewayUnusableStopsTheBotAndIsReported) {
+  World w;
+  w.Start();
+  EXPECT_FALSE(w.bot->Failure().has_value());
+  w.gateway.Fail("the token was refused");
+  ASSERT_TRUE(w.Until([&] { return w.finished; }));
+  ASSERT_TRUE(w.bot->Failure().has_value());
+  EXPECT_EQ(*w.bot->Failure(), "the token was refused");
+  EXPECT_TRUE(w.gateway.stopped);
+}
+
+TEST(Bot, AnOrdinaryStopIsNotAFailure) {
+  World w;
+  w.Start();
+  w.bot->RequestStop();
+  ASSERT_TRUE(w.Until([&] { return w.finished; }));
+  EXPECT_FALSE(w.bot->Failure().has_value());
+}

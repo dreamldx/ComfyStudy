@@ -19,6 +19,7 @@ find_package(fmt CONFIG REQUIRED)
 find_package(CLI11 CONFIG REQUIRED)
 find_package(httplib CONFIG REQUIRED)  # only the tests use it: a small HTTP server on the loopback
 find_package(boost_asio CONFIG REQUIRED)  # the event loop and coroutines (header only)
+find_package(dpp CONFIG REQUIRED)  # the Discord library (chapter 1.7); only the Discord part of the program links it
 
 # Sources and system libraries that exist on Windows only.
 set(COMFYSTUDY_PLATFORM_SOURCES src/dll_info.cpp)

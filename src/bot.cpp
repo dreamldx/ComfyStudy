@@ -205,6 +205,7 @@ asio::awaitable<void> Bot::RunJob(Lane& lane, std::string text, std::string repl
   const std::string channel = lane.channel_id;
   lane.job_id = ++job_counter_;
   lane.steps = 0;
+  spdlog::info("channel {}: job #{} starts", channel, lane.job_id);
   auto typing = std::make_shared<TypingState>(executor_);
   asio::co_spawn(executor_, TypingLoop(channel, typing), asio::detached);
 
@@ -271,7 +272,9 @@ asio::awaitable<void> Bot::RunJob(Lane& lane, std::string text, std::string repl
       history_->Append(channel, std::vector<llm::Message>(conversation.messages.begin() + static_cast<std::ptrdiff_t>(before),
                                                           conversation.messages.end()));
       co_await SendAll(channel, LastText(conversation), reply_to);
+      spdlog::info("channel {}: job #{} answered in {} step(s)", channel, lane.job_id, outcome->steps);
     } else if (outcome && outcome->reason == Reason::kCancelled) {
+      spdlog::info("channel {}: job #{} was stopped", channel, lane.job_id);
       co_await SendAll(channel, stopping_ ? kShuttingDown : kStopped, reply_to);
     } else {
       const Reason reason = outcome ? outcome->reason : Reason::kFailed;
@@ -301,6 +304,7 @@ asio::awaitable<void> Bot::TypingLoop(std::string channel_id, std::shared_ptr<Ty
 
 asio::awaitable<void> Bot::SendAll(const std::string& channel_id, const std::string& text, const std::string& reply_to) {
   const std::vector<std::string> parts = SplitMessage(NeutralizeMentions(text));
+  spdlog::info("channel {}: sending {} message(s)", channel_id, parts.size());
   bool first = true;
   for (const std::string& part : parts) {
     try {
@@ -340,6 +344,7 @@ asio::awaitable<void> Bot::HandleCommand(Command command) {
   } else {
     text = "不认识的命令。";
   }
+  spdlog::info("channel {}: the command {} is answered: {}", command.channel_id, command.name, text);
   try {
     co_await gateway_.Reply(command, text);
   } catch (const std::exception& e) {
@@ -358,6 +363,10 @@ asio::awaitable<void> Bot::Run() {
     }
   });
   gateway_.OnCommand([this](Command command) { asio::co_spawn(executor_, HandleCommand(std::move(command)), asio::detached); });
+  gateway_.OnFatal([this](std::string why) {
+    if (!failure_) failure_ = std::move(why);
+    RequestStop();
+  });
   gateway_.Start();
 
   if (!stop_requested_) {

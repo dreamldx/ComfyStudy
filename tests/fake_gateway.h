@@ -25,6 +25,7 @@ class FakeGateway final : public bot::Gateway {
 
   void OnMessage(std::function<void(bot::IncomingMessage)> handler) override { on_message_ = std::move(handler); }
   void OnCommand(std::function<void(bot::Command)> handler) override { on_command_ = std::move(handler); }
+  void OnFatal(std::function<void(std::string)> handler) override { on_fatal_ = std::move(handler); }
   void Start() override { started = true; }
   boost::asio::awaitable<void> Stop() override {
     stopped = true;
@@ -51,6 +52,7 @@ class FakeGateway final : public bot::Gateway {
   // What the platform would do: tell the bot.
   void Deliver(bot::IncomingMessage message) { on_message_(std::move(message)); }
   void Use(bot::Command command) { on_command_(std::move(command)); }
+  void Fail(std::string why) { on_fatal_(std::move(why)); }
 
   std::vector<Sent> sent;
   std::vector<Replied> replies;
@@ -62,4 +64,5 @@ class FakeGateway final : public bot::Gateway {
  private:
   std::function<void(bot::IncomingMessage)> on_message_;
   std::function<void(bot::Command)> on_command_;
+  std::function<void(std::string)> on_fatal_;
 };

@@ -15,12 +15,14 @@
 #include "chat.h"
 #include "native_tools.h"
 #include "skill.h"
+#include "skill_setup.h"
 #include "skill_tools.h"
 #include "tool.h"
 #include "tool_runtime.h"
 #include "config.h"
 #include "context.h"
 #include "context_hook.h"
+#include "discord_app.h"
 #include "curl_transport.h"
 #include "greeting.h"
 #include "llm_client.h"
@@ -62,6 +64,8 @@ int main(int argc, char** argv) {
   spdlog::set_pattern("[%l] %v");
   if (parsed.options.verbose) spdlog::set_level(spdlog::level::debug);
 
+  if (parsed.options.discord) return bot::RunDiscord(parsed.options);
+
   if (parsed.options.chat) {
     try {
       const config::Values& values = parsed.options.values;
@@ -80,17 +84,8 @@ int main(int argc, char** argv) {
       agent::ToolRuntime tools(agent::RuntimeOptionsFromSettings(values));
       std::shared_ptr<agent::SkillTools> skills;
       if (parsed.options.tools) {
-        const auto library = std::make_shared<agent::NativeTools>();
-        agent::AddToyTools(*library);
-        const std::vector<std::string> names = library->Names();
-        const auto found = values.find("skills_dir");
-        const std::filesystem::path directory = found == values.end() || found->second.empty() ? "skills" : found->second;
-        const agent::SkillCatalog catalog =
-            agent::LoadSkills(directory, std::set<std::string>(names.begin(), names.end()),
-                              {agent::SkillTools::kLoad, agent::SkillTools::kUnload});
-        for (const std::string& problem : catalog.problems) spdlog::warn("Skill {}", problem);
-        if (catalog.skills.empty()) throw std::runtime_error("there is no usable Skill in \"" + directory.string() + "\"");
-        skills = std::make_shared<agent::SkillTools>(catalog, library, tools);
+        const agent::SkillSetup setup = agent::LoadSkillSetup(values);
+        skills = std::make_shared<agent::SkillTools>(setup.catalog, setup.library, tools);
         tools.AddSource(skills);
       }
       agent::Hooks extra_hooks;

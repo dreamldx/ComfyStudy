@@ -35,15 +35,19 @@ target_compile_definitions(comfystudy_asio INTERFACE _WIN32_WINNT=0x0A00 BOOST_A
 add_library(comfystudy_core STATIC
   src/greeting.cpp src/net_probe.cpp src/options.cpp src/config.cpp
   src/http_client.cpp src/curl_transport.cpp src/conversation.cpp src/provider.cpp
-  src/json.cpp src/schema.cpp src/tool_runtime.cpp src/llm_wire.cpp src/llm_client.cpp src/tool.cpp src/native_tools.cpp src/skill.cpp src/skill_tools.cpp src/context.cpp src/context_hook.cpp src/history.cpp src/message_split.cpp src/error_id.cpp src/bot.cpp src/agent.cpp src/console_hook.cpp src/chat.cpp
+  src/json.cpp src/schema.cpp src/tool_runtime.cpp src/llm_wire.cpp src/llm_client.cpp src/tool.cpp src/native_tools.cpp src/skill.cpp src/skill_tools.cpp src/context.cpp src/context_hook.cpp src/history.cpp src/message_split.cpp src/error_id.cpp src/bot.cpp src/skill_setup.cpp src/agent.cpp src/console_hook.cpp src/chat.cpp
   ${COMFYSTUDY_PLATFORM_SOURCES})
 target_include_directories(comfystudy_core PUBLIC src)
 target_link_libraries(comfystudy_core PUBLIC comfystudy_options comfystudy_asio
   glaze::glaze CURL::libcurl spdlog::spdlog fmt::fmt CLI11::CLI11
   ${COMFYSTUDY_PLATFORM_LIBRARIES})
 
+# The part that talks to Discord (chapter 1.7), apart from the core so that only what needs DPP links it.
+add_library(comfystudy_discord STATIC src/dpp_convert.cpp src/dpp_gateway.cpp src/discord_app.cpp)
+target_link_libraries(comfystudy_discord PUBLIC comfystudy_core dpp::dpp)
+
 add_executable(comfystudy src/main.cpp)
-target_link_libraries(comfystudy PRIVATE comfystudy_core)
+target_link_libraries(comfystudy PRIVATE comfystudy_discord)
 
 # Targets that exist on one system only (defined by the platform file, now that the program exists).
 comfystudy_platform_targets()
