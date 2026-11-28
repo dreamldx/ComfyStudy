@@ -46,6 +46,7 @@ add: the tool add
   tool_result id=c2 error=false
     | 15
 == report ==
+  cache points: after messages 6, 7
   tools                   2 items, 78 tokens
   system: instructions    1 items, 9 tokens
   system: rules           1 items, 30 tokens

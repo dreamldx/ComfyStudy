@@ -9,6 +9,10 @@ discord_token = ""
 # Which service to talk to: "openai" (the default) or "anthropic".
 # llm_provider = "openai"
 
+# Prompt caching: "on" (the default) or "off". The start of a request that stays the same can be kept by the service
+# and read instead of counted again, at a lower price (Anthropic charges a little more the first time).
+# prompt_cache = "on"
+
 # How much the model thinks before it answers: "off" (the default), "low", "medium" or "high".
 # llm_reasoning = "off"
 

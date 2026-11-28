@@ -174,6 +174,10 @@ Context BuildContext(const ContextInputs& inputs) {
 
   const std::string state_text = state_for(dropped_turns);
   for (std::size_t i = first_kept; i < inputs.history.size(); ++i) context.conversation.messages.push_back(inputs.history[i]);
+  // What the next request will start with again, if nothing is left out of the history in between: the history
+  // as it is stored (up to the last message that stays), and the latest message (for the next Step of this Turn).
+  if (first_kept < inputs.history.size()) context.conversation.cache_points.push_back(context.conversation.messages.size() - 1);
+  context.conversation.cache_points.push_back(context.conversation.messages.size());
   llm::Message latest = inputs.latest;
   if (!state_text.empty()) latest.blocks.insert(latest.blocks.begin(), llm::TextBlock{state_text});
   context.conversation.messages.push_back(std::move(latest));
@@ -235,6 +239,12 @@ std::string FormatContext(const Context& context) {
     }
   }
   out << "== report ==\n";
+  out << "  cache points: ";
+  if (context.conversation.cache_points.empty()) out << "none";
+  for (std::size_t i = 0; i < context.conversation.cache_points.size(); ++i) {
+    out << (i == 0 ? "after messages " : ", ") << context.conversation.cache_points[i] + 1;
+  }
+  out << "\n";
   for (const PartReport& part : context.report.parts) {
     out << "  " << part.name << std::string(part.name.size() < 24 ? 24 - part.name.size() : 1, ' ') << part.items << " items, " << part.tokens << " tokens\n";
   }

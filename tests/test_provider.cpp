@@ -121,6 +121,14 @@ TEST(Options, TheReasoningLevelComesFromTheSettingLlmReasoning) {
   EXPECT_EQ(llm::OptionsFromSettings({}).max_tokens, 1024);
 }
 
+TEST(Options, PromptCachingIsOnUnlessTheSettingPromptCacheSaysOff) {
+  EXPECT_TRUE(llm::OptionsFromSettings({}).cache);
+  EXPECT_TRUE(llm::OptionsFromSettings({{"prompt_cache", ""}}).cache);
+  EXPECT_TRUE(llm::OptionsFromSettings({{"prompt_cache", "on"}}).cache);
+  EXPECT_FALSE(llm::OptionsFromSettings({{"prompt_cache", "off"}}).cache);
+  EXPECT_THROW(llm::OptionsFromSettings({{"prompt_cache", "maybe"}}), llm::Error);
+}
+
 TEST(Options, AnUnknownReasoningLevelIsAnError) {
   EXPECT_THROW(llm::OptionsFromSettings({{"llm_reasoning", "loud"}}), llm::Error);
 }

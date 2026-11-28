@@ -62,6 +62,11 @@ struct Message {
 struct Conversation {
   std::string system;  // may be empty
   std::vector<Message> messages;
+  // Prompt caching (chapter 1.6): indexes of messages up to and including which the request is the same as
+  // the request before it will be (the history, say). A protocol that has to be told where the cacheable start
+  // ends (Anthropic) puts a marker after each; the others cache by themselves and ignore it. Only used when
+  // Options::cache is on.
+  std::vector<std::size_t> cache_points;
 };
 
 // How much the model should think before it answers.
@@ -78,6 +83,7 @@ struct Options {
   int max_tokens = 1024;  // upper limit for the answer, counted in tokens
   Reasoning reasoning = Reasoning::kOff;
   std::vector<ToolDefinition> tools;  // empty: the model is not offered any tool
+  bool cache = false;                 // mark the cacheable start of the request, for the protocols that need it
 };
 
 // An answer: the assistant's message (append it to the conversation to continue), why it stopped,
@@ -87,6 +93,10 @@ struct Reply {
   std::string stop_reason;  // in the protocol's own words
   std::optional<long> input_tokens;
   std::optional<long> output_tokens;
+  // How much of the input the service took from its cache, and (Anthropic only) how much it wrote to it. Both
+  // are inside input_tokens, which is the total; not set when the answer does not say.
+  std::optional<long> cached_tokens;
+  std::optional<long> cache_written_tokens;
 
   // The generated text: all text blocks of the message, one after the other ("" if it has none).
   std::string Text() const;

@@ -25,8 +25,10 @@ boost::asio::awaitable<void> ContextHook::OnContextBuilt(const ContextBuilt& eve
 
 boost::asio::awaitable<void> ContextHook::OnReplyReceived(const ReplyReceived& event) {
   if (event.reply.input_tokens) {
-    out_ << "[context] the service counted " << *event.reply.input_tokens << " input tokens (about " << estimated_ << " were estimated)\n"
-         << std::flush;
+    out_ << "[context] the service counted " << *event.reply.input_tokens << " input tokens (about " << estimated_ << " were estimated)";
+    if (event.reply.cached_tokens) out_ << "; " << *event.reply.cached_tokens << " read from the cache";
+    if (event.reply.cache_written_tokens) out_ << "; " << *event.reply.cache_written_tokens << " written to it";
+    out_ << "\n" << std::flush;
   }
   co_return;
 }

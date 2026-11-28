@@ -180,6 +180,14 @@ void ReadUsage(const json::Value& object, Reply& reply, const char* input_name, 
   }
 }
 
+// OpenAI: the tokens taken from the cache are in a details object of the usage, and are part of the input count.
+void ReadCachedTokens(const json::Value& object, Reply& reply, const char* details_name) {
+  const json::Value* usage = json::Find(object, "usage");
+  if (usage == nullptr || !usage->is_object()) return;
+  const json::Value* details = json::Find(*usage, details_name);
+  if (details != nullptr && details->is_object()) reply.cached_tokens = Number(*details, "cached_tokens");
+}
+
 }  // namespace
 
 // --- OpenAI Chat Completions ---------------------------------------------------------------------
@@ -257,6 +265,7 @@ Reply ParseReply(const std::string& body) {
     }
   }
   ReadUsage(object, reply, "prompt_tokens", "completion_tokens");
+  ReadCachedTokens(object, reply, "prompt_tokens_details");
   return reply;
 }
 
@@ -364,6 +373,7 @@ Reply ParseReply(const std::string& body) {
     if (!why.empty()) reply.stop_reason = why;  // e.g. "max_output_tokens"
   }
   ReadUsage(object, reply, "input_tokens", "output_tokens");
+  ReadCachedTokens(object, reply, "input_tokens_details");
   return reply;
 }
 
@@ -375,8 +385,24 @@ std::string ErrorText(const std::string& body) { return ErrorFromBody(body); }
 namespace anthropic {
 
 HttpRequest BuildRequest(const Provider& provider, const Conversation& conversation, const Options& options) {
+  // Prompt caching: a marker says "everything up to here may be kept". The service allows four. One goes after
+  // the instruction (or after the last tool when there is no instruction): it covers the tools too, which come
+  // first. The messages at the cache points take the rest, the later ones first.
+  const json::Value marker = {{"type", "ephemeral"}};
+  const bool has_prefix = !conversation.system.empty() || !options.tools.empty();
+  std::vector<std::size_t> points;
+  if (options.cache) {
+    points = conversation.cache_points;
+    std::sort(points.begin(), points.end());
+    points.erase(std::unique(points.begin(), points.end()), points.end());
+    const std::size_t room = has_prefix ? 3 : 4;
+    if (points.size() > room) points.erase(points.begin(), points.end() - static_cast<std::ptrdiff_t>(room));
+  }
+
   json::Value messages = json::Array();
+  std::size_t index = 0;
   for (const Message& message : conversation.messages) {
+    const std::size_t this_index = index++;
     // The content is a list of typed blocks; a thinking block goes back exactly as it was received.
     json::Value content = json::Array();
     for (const Block& block : message.blocks) {
@@ -393,18 +419,28 @@ HttpRequest BuildRequest(const Provider& provider, const Conversation& conversat
         json::Push(content, item);
       }
     }
-    if (!content.get_array().empty()) json::Push(messages, {{"role", RoleName(message.role)}, {"content", content}});
+    if (content.get_array().empty()) continue;
+    if (std::binary_search(points.begin(), points.end(), this_index)) content.get_array().back()["cache_control"] = marker;
+    json::Push(messages, {{"role", RoleName(message.role)}, {"content", content}});
   }
 
   json::Value body = {{"model", provider.model},
                       {"max_tokens", options.max_tokens},  // required here
                       {"messages", messages}};
-  if (!conversation.system.empty()) body["system"] = Utf8(conversation.system);  // top level, not a message
+  if (!conversation.system.empty()) {
+    if (options.cache) {
+      // a marker can only be put on a block, so the instruction is a list of one
+      body["system"] = json::Array({{{"type", "text"}, {"text", Utf8(conversation.system)}, {"cache_control", marker}}});
+    } else {
+      body["system"] = Utf8(conversation.system);  // top level, not a message
+    }
+  }
   if (!options.tools.empty()) {
     json::Value tools = json::Array();
     for (const ToolDefinition& tool : options.tools) {
       json::Push(tools, {{"name", tool.name}, {"description", Utf8(tool.description)}, {"input_schema", tool.parameters}});
     }
+    if (options.cache && conversation.system.empty()) tools.get_array().back()["cache_control"] = marker;
     body["tools"] = tools;
   }
   if (options.reasoning != Reasoning::kOff) {
@@ -444,6 +480,16 @@ Reply ParseReply(const std::string& body) {
   }
   reply.stop_reason = String(object, "stop_reason");
   ReadUsage(object, reply, "input_tokens", "output_tokens");
+  // Here input_tokens is only what comes after the last cache marker; what was read from the cache and what was
+  // written to it are counted apart. The total is what the other two protocols call the input.
+  const json::Value* usage = json::Find(object, "usage");
+  if (usage != nullptr && usage->is_object()) {
+    reply.cached_tokens = Number(*usage, "cache_read_input_tokens");
+    reply.cache_written_tokens = Number(*usage, "cache_creation_input_tokens");
+    if (reply.input_tokens && (reply.cached_tokens || reply.cache_written_tokens)) {
+      reply.input_tokens = *reply.input_tokens + reply.cached_tokens.value_or(0) + reply.cache_written_tokens.value_or(0);
+    }
+  }
   return reply;
 }
 

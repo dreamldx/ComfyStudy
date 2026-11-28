@@ -455,3 +455,44 @@ TEST(BuildContext, AReasoningBlockCountsWithItsWholePayloadBecauseItIsSentBackAn
   EXPECT_EQ(context.report.parts[1].name, "history");
   EXPECT_EQ(context.report.parts[1].tokens, 1u + json::Dump(payload).size() + 2u);
 }
+
+TEST(BuildContext, TheCachePointsAreTheLastMessageOfTheHistoryAndTheLatestMessage) {
+  agent::ContextInputs inputs = Inputs();
+  inputs.history = Join({ToolTurn("1"), ToolTurn("2")});
+  inputs.turn = {Asks("c9", "add", Json::object_t{}), Result("c9", "3")};
+  const agent::Context context = agent::BuildContext(inputs);
+  // messages: 8 of the history (0 to 7), the latest (8), 2 of the turn
+  EXPECT_EQ(context.conversation.cache_points, (std::vector<std::size_t>{7, 8}));
+}
+
+TEST(BuildContext, WithoutHistoryOnlyTheLatestMessageIsAPoint) {
+  EXPECT_EQ(agent::BuildContext(Inputs()).conversation.cache_points, (std::vector<std::size_t>{0}));
+}
+
+TEST(BuildContext, WhenTurnsAreLeftOutThePointsFollowTheMessagesThatStay) {
+  agent::ContextInputs inputs = Inputs();
+  inputs.history = Join({ToolTurn("1"), ToolTurn("2"), ToolTurn("3")});
+  agent::ContextInputs all = inputs;
+  all.budget_tokens = 0;
+  inputs.budget_tokens = agent::BuildContext(all).report.total - 20;
+  const agent::Context context = agent::BuildContext(inputs);
+  ASSERT_EQ(context.report.dropped_turns, 1u);
+  EXPECT_EQ(context.conversation.cache_points, (std::vector<std::size_t>{7, 8}));  // two turns of four messages stay
+}
+
+TEST(BuildContext, TheFormatNamesTheCachePoints) {
+  agent::ContextInputs inputs = Inputs();
+  inputs.history = ToolTurn("1");
+  EXPECT_TRUE(Contains(agent::FormatContext(agent::BuildContext(inputs)), "cache points: after messages 4, 5"));
+}
+
+TEST(ContextHook, AlsoSaysHowMuchWasReadFromTheCacheAndHowMuchWasWrittenToIt) {
+  std::ostringstream out;
+  agent::ContextHook hook(out, false);
+  llm::Reply reply;
+  reply.input_tokens = 812;
+  reply.cached_tokens = 500;
+  reply.cache_written_tokens = 300;
+  Await(hook.OnReplyReceived(agent::ReplyReceived{1, reply}));
+  EXPECT_EQ(out.str(), "[context] the service counted 812 input tokens (about 0 were estimated); 500 read from the cache; 300 written to it\n");
+}

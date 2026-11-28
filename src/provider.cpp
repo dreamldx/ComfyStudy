@@ -94,6 +94,14 @@ Options OptionsFromSettings(const config::Values& settings) {
   } else {
     throw Error("llm_reasoning must be off, low, medium or high, not \"" + level + "\"");
   }
+  const std::string& cache = Setting(settings, "prompt_cache");
+  if (cache.empty() || cache == "on") {
+    options.cache = true;
+  } else if (cache == "off") {
+    options.cache = false;
+  } else {
+    throw Error("prompt_cache must be on or off, not \"" + cache + "\"");
+  }
   return options;
 }
 

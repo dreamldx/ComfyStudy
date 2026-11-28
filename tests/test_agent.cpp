@@ -500,3 +500,27 @@ TEST(TurnContext, TheHooksAreToldAboutEveryContextAndOnlyWhenThereIsAPlan) {
   Play(without);
   EXPECT_FALSE(Has(*without.log, "ContextBuilt(1)"));
 }
+
+TEST(TurnContext, WithCachingOnTheRequestMarksTheEndOfTheInstructionTheEndOfTheHistoryAndTheLatestMessage) {
+  World world({Ok(Said("hi"))}, "the new question");
+  world.conversation.messages.insert(world.conversation.messages.begin(),
+                                     {{llm::Role::kUser, {llm::TextBlock{"earlier question"}}}, {llm::Role::kAssistant, {llm::TextBlock{"earlier answer"}}}});
+  world.options.cache = true;
+  const agent::ContextPlan plan = SimplePlan();
+  EXPECT_EQ(Play(world, {}, nullptr, nullptr, &plan).reason, Reason::kDone);
+  const Json body = RequestBody(world, 0);
+  const Json marker = {{"type", "ephemeral"}};
+  EXPECT_EQ(body["system"][0]["cache_control"], marker);
+  ASSERT_EQ(body["messages"].size(), 3u);
+  EXPECT_EQ(body["messages"][1]["content"][0]["cache_control"], marker);  // the end of the history
+  EXPECT_FALSE(body["messages"][0]["content"][0].contains("cache_control"));
+  EXPECT_EQ(body["messages"][2]["content"][1]["cache_control"], marker);  // the user's text, after the state
+  EXPECT_FALSE(body["messages"][2]["content"][0].contains("cache_control"));
+}
+
+TEST(TurnContext, WithCachingOffTheRequestHasNoMarkers) {
+  World world({Ok(Said("hi"))}, "add things");
+  const agent::ContextPlan plan = SimplePlan();
+  Play(world, {}, nullptr, nullptr, &plan);
+  EXPECT_EQ(world.transport.seen().at(0).body.find("cache_control"), std::string::npos);
+}

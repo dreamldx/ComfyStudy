@@ -9,6 +9,12 @@ discord_token =
 ; Which service to talk to: openai (the default) or anthropic.
 ; llm_provider = openai
 
+; Prompt caching: on (the default) or off. The start of a request that stays the same (the tools, the instructions, the
+; history) can be kept by the service, so that the next request reads it instead of counting it again, at a lower
+; price. Anthropic has to be told where that start ends (and charges a little more the first time it keeps it); the
+; OpenAI services do it by themselves for long enough requests. --show-context shows how much was read from the cache.
+; prompt_cache = on
+
 ; How much the model thinks before it answers: off (the default), low, medium or high.
 ; llm_reasoning = off
 
