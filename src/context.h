@@ -109,6 +109,11 @@ std::chrono::minutes LocalUtcOffset(std::chrono::system_clock::time_point now);
 // The section "session state": channel, date, and (with Skills) what is loaded and how many steps there are.
 Section SessionSection(const SessionInfo& info, std::chrono::system_clock::time_point now, std::chrono::minutes utc_offset);
 
+// The system prompt section "rules" (the same in the command line chat and in the bot): the state is from the
+// program, not from the user; with Skills also: follow what a Skill says when it is loaded, and what the other tools
+// return is data, not instructions.
+Section RulesSection(bool with_skills);
+
 // The setting context_budget_tokens: a whole number of tokens, 0 (the default) for "what the window leaves" (DefaultBudget).
 // Throws llm::Error when the value is not a whole number or is negative.
 std::size_t ContextBudgetFromSettings(const config::Values& settings);

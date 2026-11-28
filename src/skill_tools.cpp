@@ -111,6 +111,10 @@ std::string SkillTools::Catalog() const {
   return list;
 }
 
+Section SkillTools::CatalogSection() const {
+  return {"skills", "Load a Skill with load_skill when the task needs it. The Skills:\n" + Catalog()};
+}
+
 std::vector<ToolSpec> SkillTools::Specs() const {
   json::Value names = json::Array();
   for (const SkillInfo& skill : catalog_.skills) json::Push(names, skill.name);

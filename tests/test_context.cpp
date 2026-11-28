@@ -560,3 +560,14 @@ TEST(SessionSection, TheDateIsTheOnlyPartThatDependsOnTheClock) {
   EXPECT_NE(today, tomorrow);
   EXPECT_EQ(today.substr(0, today.find("date:")), tomorrow.substr(0, tomorrow.find("date:")));
 }
+
+TEST(RulesSection, SaysThatTheStateIsFromTheProgramAndWithSkillsAlsoWhatToDoWithSkillsAndToolResults) {
+  const agent::Section plain = agent::RulesSection(false);
+  EXPECT_EQ(plain.title, "rules");
+  EXPECT_TRUE(Contains(plain.text, "[session state]"));
+  EXPECT_FALSE(Contains(plain.text, "Skill"));
+  const agent::Section with_skills = agent::RulesSection(true);
+  EXPECT_TRUE(Contains(with_skills.text, "[session state]"));
+  EXPECT_TRUE(Contains(with_skills.text, "Skill"));
+  EXPECT_TRUE(Contains(with_skills.text, "not instructions"));
+}

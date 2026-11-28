@@ -337,3 +337,12 @@ TEST(SkillTools, TheStateOfTheNextStepTellsWhichSkillsAreLoadedWhileTheToolsBloc
   EXPECT_TRUE(Contains(second["messages"][0]["content"][0]["text"].get<std::string>(), "loaded skills: calc"));
   EXPECT_EQ(conversation.messages[0].blocks.size(), 1u);  // the stored message has no state in it
 }
+
+TEST(SkillTools, TheCatalogSectionHasTheListAndHowToUseIt) {
+  World world;
+  const agent::Section section = world.skills->CatalogSection();
+  EXPECT_EQ(section.title, "skills");
+  EXPECT_TRUE(Contains(section.text, "load_skill"));
+  EXPECT_TRUE(Contains(section.text, "- calc: exact arithmetic"));
+  EXPECT_TRUE(Contains(section.text, world.skills->Catalog()));
+}

@@ -40,6 +40,9 @@ class SkillTools final : public ToolSource, public AgentHook {
   // word about what is loaded: that changes, and goes in the state). It is meant for the system prompt.
   std::string Catalog() const;
 
+  // The system prompt section with that list and how to use it.
+  Section CatalogSection() const;
+
   // The Skills that are loaded, in the order they were loaded.
   const std::vector<std::string>& Loaded() const { return loaded_; }
 
