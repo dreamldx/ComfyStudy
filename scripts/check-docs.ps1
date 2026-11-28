@@ -20,6 +20,9 @@ $validStatus = @($ST_NEW, $ST_WRITING, $ST_VERIFIED, $ST_TAGGED)
 $errors = New-Object System.Collections.Generic.List[string]
 function Fail([string]$file, [string]$msg) { $script:errors.Add(('FAIL {0}: {1}' -f $file, $msg)) }
 function ReadLf([string]$path) { ([IO.File]::ReadAllText($path, [Text.Encoding]::UTF8) -replace "`r`n", "`n") }
+# `git show` writes the file as UTF-8; without this PowerShell decodes it with the console code page, and a source
+# file with Chinese in it (chapter 1.7: the texts the bot sends) never matches its snippet.
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
 
 $taggedPhases = New-Object System.Collections.Generic.HashSet[string]
 $tutorial = Join-Path $repo 'docs\tutorial'
